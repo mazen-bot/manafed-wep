@@ -10,7 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
-    body { background: #fffcff; color: #333; }
+    body { background: #fffcff; color: #333; min-height: 100vh; display: flex; flex-direction: column; }
     
     /* Header styling - preserve original design */
     header { 
@@ -36,7 +36,7 @@
       color: var(--primary);
     }
     
-    .help-layout { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .help-layout { max-width: 900px; margin: 40px auto; padding: 0 20px; flex: 1; }
     .main { width: 100%; }
     .side { display: none; }
     .tabs { display: none; }
