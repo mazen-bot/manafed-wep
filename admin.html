@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم مازن - الإدارة الكاملة</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f7; margin: 0; padding: 0; }
+        
+        .admin-wrapper { display: flex; min-height: 100vh; }
+        
+        /* القائمة الجانبية */
+        .sidebar { 
+            width: 250px; 
+            background: #2c3e50; 
+            padding: 20px 0; 
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            right: 0;
+            display: none; /* مخفية افتراضياً */
+        }
+        
+        .sidebar h3 { 
+            color: white; 
+            padding: 0 20px 15px; 
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            font-size: 1.1rem;
+        }
+        
+        .sidebar-item { 
+            padding: 12px 20px; 
+            color: #bdc3c7; 
+            cursor: pointer; 
+            transition: all 0.3s;
+            border-right: 3px solid transparent;
+            font-weight: 500;
+        }
+        
+        .sidebar-item:hover { 
+            background: rgba(255,255,255,0.1); 
+            color: white;
+            padding-right: 18px;
+        }
+        
+        .sidebar-item.active { 
+            background: var(--primary);
+            color: white;
+            border-right: 3px solid #fff;
+        }
+        
+        .admin-container { 
+            flex: 1; 
+            margin-right: 250px;
+            padding: 20px;
+            max-width: 1200px;
+        }
+        
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid var(--primary); display: none; }
+        .card.active { display: block; }
+        
+        h2 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .input-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        input, select { flex: 1; min-width: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        
+        button { cursor: pointer; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; transition: 0.3s; }
+        .btn-main { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+        .btn-main:hover { opacity: 0.9; }
+        
+        /* تصميم جدول المنتجات في لوحة التحكم */
+        .product-item { display: flex; align-items: center; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-right: 5px solid var(--success); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .product-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; margin-left: 15px; }
+        .product-info { flex-grow: 1; }
+        .actions { display: flex; gap: 5px; }
+        .btn-edit { background: #ffc107; color: #000; }
+        .btn-delete { background: var(--danger); color: white; }
+        
+        h1 { margin: 0 0 20px 0; color: var(--dark); }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: static; height: auto; }
+            .admin-wrapper { flex-direction: column; }
+            .admin-container { margin-right: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-wrapper">
+    <!-- القائمة الجانبية -->
+    <div class="sidebar">
+        <h3>قائمة الإدارة</h3>
+        <div class="sidebar-item" onclick="window.open('index.html', '_blank')">🌐 الموقع</div>
+        <div class="sidebar-item active" onclick="showSection('slider')">🖼️ واجهة العرض</div>
+        <div class="sidebar-item" onclick="showSection('logo')">🔧 لوجو الموقع</div>
+        <div class="sidebar-item" onclick="showSection('tutorials')">📚 الدروس</div>
+        <div class="sidebar-item" onclick="showSection('products')">📦 المنتجات</div>
+        <div class="sidebar-item" onclick="showSection('users')">👥 المستخدمين</div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="admin-container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h1 style="margin:0;">🛠 لوحة تحكم مازن (الأدمن)</h1>
+            <button onclick="logoutUser()" id="logoutBtn" class="btn-main" style="display:none; background:#dc3545; width:auto; padding:10px 20px;">🚪 تسجيل الخروج</button>
+        </div>
+
+    <!-- Login Card -->
+    <div class="card" id="loginCard" style="max-width:400px; margin:100px auto; display:block;">
+        <h2 style="text-align:center; margin-bottom:20px;">🔐 تسجيل الدخول</h2>
+        <div class="input-group" style="flex-direction:column;">
+            <input type="text" id="loginUser" placeholder="اسم المستخدم" style="width:100%;" onkeypress="if(event.key==='Enter') loginUser()">
+            <input type="password" id="loginPass" placeholder="كلمة المرور" style="width:100%;" onkeypress="if(event.key==='Enter') loginUser()">
+            <button onclick="loginUser()" class="btn-main" style="width:100%; background:var(--primary);">دخول</button>
+        </div>
+        <p style="text-align:center; color:#666; font-size:0.9rem; margin-top:15px;">الرجاء استخدام بيانات المستخدم المضافة في النظام</p>
+    </div>
+
+    <div id="adminControls" style="display:none;">
+    <div class="card" id="slider">
+        <h2>🖼️ التحكم في واجهة العرض (Slider)</h2>
+        <p style="font-size: 0.9rem; color: #666;">تغيير العنوان، الصورة الرئيسية، وإدارة صور السلايدر</p>
+        <div class="input-group">
+            <input type="text" id="sliderTitle" placeholder="العنوان الظاهر على الصورة">
+            <input type="text" id="sliderImg" placeholder="رابط صورة الخلفية (URL)">
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="sliderFiles" accept="image/*" multiple onchange="handleSliderFiles(event)">
+            <button class="btn-main" style="width:auto; padding:8px 14px;" onclick="uploadSliderFiles()">أرفق صور السلايدر</button>
+        </div>
+        <div id="sliderPreview" style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;"></div>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+            <button onclick="updateSlider()" class="btn-main">تحديث واجهة المستخدمين</button>
+            <button onclick="clearSliderPreview()" class="btn-main" style="background:#6c757d; width:auto;">مسح المعاينات</button>
+        </div>
+
+        <div style="margin-top:14px;">
+            <h3 style="margin:0 0 8px 0;">صور السلايدر الحالية</h3>
+            <div id="sliderImagesList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+    </div>
+
+    <div class="card" id="logo">
+        <h2>🔧 لوجو الموقع</h2>
+        <p style="font-size:0.95rem;color:#666;">ارفع صورة لوجو الموقع هنا وسيتم حفظها وعرضها تلقائياً في الواجهة الأمامية.</p>
+        <div class="input-group" style="align-items:center;">
+            <input type="file" id="logoFile" accept="image/*" onchange="handleLogoFile(event)">
+            <img id="logoPreview" src="" alt="معاينة اللوجو" style="height:60px; margin-inline-start:10px; border-radius:6px; display:none;">
+        </div>
+        <button class="btn-main" onclick="saveLogo()" style="background:var(--primary);">حفظ اللوجو</button>
+    </div>
+
+    <div class="card" id="tutorials">
+        <h2 id="tutorialFormTitle">📚 إدارة الدروس</h2>
+        <p style="font-size:0.95rem;color:#666;">أضف دروساً ليتم عرضها في مركز التعليمات. الإدخال متوافق مع Markdown.</p>
+        <div class="input-group" style="flex-direction:column;">
+            <input type="hidden" id="editTutorialId">
+            <input id="adminTTitle" placeholder="عنوان الدرس">
+            <div style="display:flex;gap:8px;margin-top:8px"></div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+                <input type="file" id="adminTThumb" accept="image/*" onchange="handleTutorialThumb(event)">
+                <img id="tutorialThumbPreview" src="" alt="معاينة الصورة" style="height:60px;border-radius:6px;display:none;">
+            </div>
+            <textarea id="adminTContent" rows="6" placeholder="المحتوى (Markdown)"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn-main" onclick="adminAddTutorial()" style="background:var(--primary);">أضف درس</button>
+                <button class="btn-main" onclick="adminClearTutorialForm()" style="background:#6c757d;">مسح</button>
+            </div>
+        </div>
+
+        <div style="margin-top:30px; border-top:2px solid #eee; padding-top:20px;">
+            <h3 style="margin:0 0 15px 0;">📋 الدروس الحالية</h3>
+            <div id="adminTutorialsList"></div>
+        </div>
+    </div>
+
+    <div class="card" id="products">
+    <h2 id="formTitle">📦 إضافة منتج جديد</h2>
+    <input type="hidden" id="editId">
+    <div class="input-group">
+        <input type="text" id="pName" placeholder="اسم المنتج">
+        <select id="pCategory">
+            <option value="iphone"> iphone</option>
+            <option value="Samsung">Samsung</option>
+            <option value="Go">Go</option>
+        </select>
+        <input type="hidden" id="pImg">
+    </div>
+    <div style="margin-top:10px; display:none;">
+        <label for="pStorage" style="display:block; font-weight:600; margin-bottom:6px;">خيارات السعة (JSON)</label>
+        <textarea id="pStorage" rows="4" placeholder='مثال: [{"label":"128GB","price":6100,"priceWholesale":6150,"priceOffer":5850},{"label":"256GB","price":6600,"priceWholesale":6650,"priceOffer":6350}]' style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd;"></textarea>
+        <small style="color:#666; display:block; margin-top:6px;">اترك الحقل فارغًا لاستخدام الخيارات الافتراضية (128/256/512)</small>
+        <div style="margin-top:8px; display:flex; gap:8px;">
+            <button type="button" id="addStorageBtn" class="btn-main" style="background:#17a2b8; padding:8px 12px; width:auto;">إضافة سعة</button>
+            <button type="button" id="clearStorageBtn" class="btn-main" style="background:#6c757d; padding:8px 12px; width:auto;" onclick="clearStorageList()">مسح القوائم</button>
+        </div>
+
+        <div id="storageForm" style="display:none; margin-top:10px; background:#fff; padding:10px; border-radius:8px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input id="storageLabel" placeholder="مثال: 128GB" style="flex:1; min-width:120px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="storagePrice" type="number" placeholder="سعر كوارا مورا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="storagePriceWholesale" type="number" placeholder="تابي تمارا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="storagePriceOffer" type="number" placeholder="سعر الكاش" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+            </div>
+            <div style="margin-top:8px; display:flex; gap:8px;">
+                <button type="button" id="addStorageConfirm" class="btn-main" style="background:#28a745;">أضف</button>
+                <button type="button" id="addStorageCancel" class="btn-main" style="background:#dc3545;">إلغاء</button>
+            </div>
+        </div>
+
+        <div id="storageList" style="margin-top:10px;"></div>
+    </div>
+
+    <div style="margin-top:20px; border-top:2px solid #eee; padding-top:15px;">
+        <label style="display:block; font-weight:600; margin-bottom:10px;">🎨 خيارات الألوان</label>
+        <small style="color:#666; display:block; margin-bottom:10px;">أضف ألوان مختلفة للمنتج مع سعر وصورة خاصة لكل لون</small>
+        
+        <div style="margin-top:8px; display:flex; gap:8px;">
+            <button type="button" id="addColorBtn" class="btn-main" style="background:#6f42c1; padding:8px 12px; width:auto;">إضافة لون</button>
+            <button type="button" id="clearColorsBtn" class="btn-main" style="background:#6c757d; padding:8px 12px; width:auto;" onclick="clearColorsList()">مسح الألوان</button>
+        </div>
+
+        <div id="colorForm" style="display:none; margin-top:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:2px solid #6f42c1;">
+            <h4 style="margin:0 0 10px 0; color:#6f42c1;">إضافة لون جديد</h4>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                <input id="colorName" placeholder="اسم اللون (مثال: أسود، أبيض، أزرق)" style="flex:1; min-width:200px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="colorCode" type="color" value="#000000" style="width:60px; height:40px; border:1px solid #ddd; border-radius:6px; cursor:pointer;">
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                <input id="colorPrice" type="number" placeholder="سعر كوارا مورا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="colorPriceWholesale" type="number" placeholder="تابي تمارا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                <input id="colorPriceOffer" type="number" placeholder="سعر الكاش" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;" onchange="calculateColorPrices()">
+            </div>
+            <div style="margin-top:10px; background:#fff; padding:10px; border-radius:8px; border:1px solid #e6e6e6;">
+                <label style="display:block; font-weight:600; margin-bottom:8px;">خيارات السعة لهذا اللون</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="addColorStorageBtn" class="btn-main" style="background:#17a2b8; padding:6px 10px; width:auto;">إضافة سعة</button>
+                    <button type="button" id="clearColorStorageBtn" class="btn-main" style="background:#6c757d; padding:6px 10px; width:auto;" onclick="clearColorStorageList()">مسح السعات</button>
+                </div>
+
+                <div id="colorStorageForm" style="display:none; margin-top:10px; background:#f9f9f9; padding:10px; border-radius:8px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <input id="colorStorageLabel" placeholder="مثال: 128GB" style="flex:1; min-width:120px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                        <input id="colorStoragePrice" type="number" placeholder="سعر كوارا مورا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                        <input id="colorStoragePriceWholesale" type="number" placeholder="تابي تمارا" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                        <input id="colorStoragePriceOffer" type="number" placeholder="سعر الكاش" style="width:160px; padding:8px; border:1px solid #ddd; border-radius:6px;" onchange="calculateColorStoragePrices()">
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button type="button" id="addColorStorageConfirm" class="btn-main" style="background:#28a745;">أضف</button>
+                        <button type="button" id="addColorStorageCancel" class="btn-main" style="background:#dc3545;">إلغاء</button>
+                    </div>
+                </div>
+
+                <div id="colorStorageList" style="margin-top:10px;"></div>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="display:block; margin-bottom:5px; font-weight:500;">صورة اللون:</label>
+                <input type="file" id="colorImage" accept="image/*" style="padding:5px;">
+                <img id="colorImagePreview" src="" alt="معاينة" style="height:80px; margin-top:8px; border-radius:6px; display:none;">
+            </div>
+            <div style="margin-top:10px; display:flex; gap:8px;">
+                <button type="button" id="addColorConfirm" class="btn-main" style="background:#28a745;">إضافة اللون</button>
+                <button type="button" id="addColorCancel" class="btn-main" style="background:#dc3545;">إلغاء</button>
+            </div>
+        </div>
+
+        <div id="colorsList" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="input-group" style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px; display:none;">
+        <input type="number" id="pPrice" placeholder="سعر كوارا ومورا">
+        <input type="number" id="pPriceWholesale" placeholder="سعر تابي وتمارا">
+        <input type="number" id="pPriceOffer" placeholder="سعر الكاش">
+    </div>
+    <button onclick="saveProduct()" id="saveBtn" class="btn-main" style="background: var(--success);">حفظ المنتج</button>
+    <button onclick="resetForm()" id="cancelBtn" style="display:none; background:#6c757d; color:white; width:100%; margin-top:5px;">إلغاء التعديل</button>
+
+    <div style="margin-top:30px; border-top:2px solid #eee; padding-top:20px;">
+        <h3 style="margin:0 0 15px 0;">📋 المنتجات الحالية</h3>
+        <div id="adminProductsList"></div>
+    </div>
+</div>
+
+    <div class="card" id="users">
+        <h2 id="userFormTitle">👥 إدارة المستخدمين</h2>
+        <p style="font-size:0.95rem;color:#666;">أضف مستخدمين جدد وحدد صلاحياتهم في لوحة التحكم</p>
+        <div class="input-group" style="flex-direction:column;">
+            <input type="hidden" id="editUserId">
+            <input id="userName" placeholder="اسم المستخدم">
+            <input id="userPassword" type="password" placeholder="كلمة المرور">
+            <input id="userEmail" type="email" placeholder="البريد الإلكتروني (اختياري)">
+            
+            <div style="margin-top:15px; background:#f8f9fa; padding:15px; border-radius:8px;">
+                <h4 style="margin:0 0 10px 0; color:#2c3e50;">🔐 الصلاحيات:</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" class="user-permission" value="slider" checked>
+                        <span>🖼️ واجهة العرض</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" class="user-permission" value="logo" checked>
+                        <span>🔧 لوجو الموقع</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" class="user-permission" value="tutorials" checked>
+                        <span>📚 الدروس</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" class="user-permission" value="products" checked>
+                        <span>📦 المنتجات</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" class="user-permission" value="users">
+                        <span>👥 إدارة المستخدمين</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="display:flex;gap:8px;margin-top:15px;">
+                <button class="btn-main" onclick="saveUser()" id="saveUserBtn" style="background:var(--primary);">حفظ المستخدم</button>
+                <button class="btn-main" onclick="clearUserForm()" style="background:#6c757d;">مسح</button>
+            </div>
+        </div>
+
+        <div style="margin-top:30px; border-top:2px solid #eee; padding-top:20px;">
+            <h3 style="margin:0 0 15px 0;">📋 المستخدمين الحاليين</h3>
+            <div id="usersList"></div>
+        </div>
+    </div>
+
+    </div> <!-- end adminControls -->
+    </div> <!-- end admin-container -->
+</div> <!-- end admin-wrapper -->
+
+<footer style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; text-align: center; padding: 15px 20px; margin-top: 30px; border-top: 3px solid #667eea;">
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <p style="margin: 5px 0; font-size: 0.95rem; font-weight: 600;">جميع الحقوق محفوظة © 2026</p>
+        <p style="margin: 5px 0; font-size: 0.9rem; opacity: 0.9;">mazenalgarne</p>
+    </div>
+</footer>
+
+<script>
+    // --- تكوين Firebase الخاص بك ---
+    // انسخ بياناتك من Firebase Console وضعها هنا
+  const firebaseConfig = {
+        apiKey: "AIzaSyDdLB3KHZVbNw3O9QrKJzBw2pL_pFn8Iso",
+        databaseURL: "https://mazen-2ba04-default-rtdb.firebaseio.com",
+        projectId: "mazen-2ba04"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    // --- Admin auth helpers (with client-side hashing) ---
+    async function hashString(str) {
+        const enc = new TextEncoder();
+        const data = enc.encode(str);
+        const hashBuf = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuf));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    let currentUser = null;
+    let userPermissions = [];
+
+    async function loginUser() {
+        const username = (document.getElementById('loginUser').value || '').trim();
+        const password = (document.getElementById('loginPass').value || '').trim();
+        
+        if (!username || !password) {
+            alert('الرجاء إدخال اسم المستخدم وكلمة المرور');
+            return;
+        }
+
+        try {
+            const hashedPassword = await hashString(password);
+            
+            // البحث في قاعدة بيانات المستخدمين
+            const usersSnapshot = await db.ref('admin/users').once('value');
+            const users = usersSnapshot.val();
+            
+            if (!users) {
+                alert('لا يوجد مستخدمين في النظام');
+                return;
+            }
+
+            let foundUser = null;
+            let userId = null;
+
+            // البحث عن المستخدم
+            for (const [id, user] of Object.entries(users)) {
+                if (user.username === username && user.password === hashedPassword) {
+                    foundUser = user;
+                    userId = id;
+                    break;
+                }
+            }
+
+            if (foundUser) {
+                // تسجيل الدخول ناجح
+                currentUser = { id: userId, ...foundUser };
+                userPermissions = foundUser.permissions || [];
+                
+                localStorage.setItem('adminLoggedIn', '1');
+                localStorage.setItem('currentUserId', userId);
+                localStorage.setItem('currentUserName', username);
+                
+                showAdminControls(true);
+                applyUserPermissions();
+                alert('مرحباً ' + username + '!');
+            } else {
+                alert('اسم المستخدم أو كلمة المرور غير صحيحة');
+            }
+        } catch (err) {
+            alert('خطأ في تسجيل الدخول: ' + err.message);
+        }
+    }
+
+    function applyUserPermissions() {
+        // إخفاء جميع الأقسام في القائمة الجانبية
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            const onclick = item.getAttribute('onclick');
+            if (onclick && onclick.includes('showSection')) {
+                const sectionMatch = onclick.match(/showSection\('(\w+)'\)/);
+                if (sectionMatch) {
+                    const section = sectionMatch[1];
+                    // إظهار فقط الأقسام المصرح بها
+                    if (!userPermissions.includes(section)) {
+                        item.style.display = 'none';
+                    } else {
+                        item.style.display = '';
+                    }
+                }
+            }
+        });
+        
+        // إظهار أول قسم متاح
+        const firstAvailableSection = userPermissions[0];
+        if (firstAvailableSection) {
+            showSection(firstAvailableSection);
+        }
+    }
+
+    function showAdminControls(show) {
+        const loginCard = document.getElementById('loginCard');
+        const adminControls = document.getElementById('adminControls');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (loginCard) loginCard.style.display = show ? 'none' : 'block';
+        if (adminControls) adminControls.style.display = show ? 'block' : 'none';
+        if (logoutBtn) logoutBtn.style.display = show ? 'inline-block' : 'none';
+        if (sidebar) sidebar.style.display = show ? 'block' : 'none';
+    }
+
+    function logoutUser() {
+        if (confirm('هل تريد تسجيل الخروج؟')) {
+            localStorage.removeItem('adminLoggedIn');
+            localStorage.removeItem('currentUserId');
+            localStorage.removeItem('currentUserName');
+            currentUser = null;
+            userPermissions = [];
+            showAdminControls(false);
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+    }
+
+    // فحص حالة تسجيل الدخول عند تحميل الصفحة
+    async function checkLoginStatus() {
+        const isLoggedIn = localStorage.getItem('adminLoggedIn');
+        const userId = localStorage.getItem('currentUserId');
+        
+        if (isLoggedIn === '1' && userId) {
+            try {
+                const userSnapshot = await db.ref('admin/users/' + userId).once('value');
+                const user = userSnapshot.val();
+                
+                if (user) {
+                    currentUser = { id: userId, ...user };
+                    userPermissions = user.permissions || [];
+                    showAdminControls(true);
+                    applyUserPermissions();
+                } else {
+                    // المستخدم محذوف
+                    localStorage.removeItem('adminLoggedIn');
+                    localStorage.removeItem('currentUserId');
+                    localStorage.removeItem('currentUserName');
+                    showAdminControls(false);
+                }
+            } catch (err) {
+                console.error('خطأ في فحص حالة تسجيل الدخول:', err);
+                showAdminControls(false);
+            }
+        } else {
+            showAdminControls(false);
+        }
+    }
+
+    // دالة إظهار/إخفاء الأقسام
+    function showSection(sectionId) {
+        // إخفاء جميع الأقسام
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => card.classList.remove('active'));
+        
+        // إزالة الحالة النشطة من جميع عناصر القائمة الجانبية
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        sidebarItems.forEach(item => item.classList.remove('active'));
+        
+        // إظهار القسم المحدد
+        const targetCard = document.getElementById(sectionId);
+        if(targetCard) {
+            targetCard.classList.add('active');
+        }
+        
+        // تنشيط عنصر القائمة الجانبية المناسب
+        sidebarItems.forEach(item => {
+            const onclick = item.getAttribute('onclick');
+            if (onclick && onclick.includes(`'${sectionId}'`)) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    // عند تحميل الصفحة، فحص حالة تسجيل الدخول
+    document.addEventListener('DOMContentLoaded', () => {
+        checkLoginStatus();
+    });
+
+    // حذف بيانات الجلسة عند إغلاق الصفحة لإجبار تسجيل الدخول مرة أخرى
+    window.addEventListener('beforeunload', () => {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('currentUserId');
+        localStorage.removeItem('currentUserName');
+    });
+
+
+    async function loginAdmin() {
+        const user = document.getElementById('adminUser').value;
+        const pass = document.getElementById('adminPass').value;
+        if(!user || !pass) { alert('ادخل اسم المستخدم وكلمة المرور'); return; }
+        const hashed = await hashString(pass);
+        db.ref('admin/credentials').once('value').then(snap => {
+            const cred = snap.val();
+            if(cred && cred.user === user) {
+                // Support both hashed and legacy-plaintext storage
+                if(cred.pass === hashed || cred.pass === pass) {
+                    localStorage.setItem('adminLoggedIn','1');
+                    showAdminControls(true);
+                    alert('تم تسجيل الدخول');
+                    return;
+                }
+            }
+            alert('خطأ في اسم المستخدم أو كلمة المرور');
+        }).catch(err => { alert('خطأ في الاتصال: ' + err.message); });
+    }
+
+    async function setCredentials() {
+        const user = document.getElementById('newAdminUser').value.trim();
+        const pass = document.getElementById('newAdminPass').value;
+        if(!user || !pass) { alert('ادخل اسم مستخدم وكلمة مرور جديدين'); return; }
+        const hashed = await hashString(pass);
+        db.ref('admin/credentials').set({ user, pass: hashed })
+        .then(() => alert('تم حفظ بيانات الدخول'))
+        .catch(err => alert('خطأ في الحفظ: ' + err.message));
+    }
+
+    function logoutAdmin() {
+        localStorage.removeItem('adminLoggedIn');
+        showAdminControls(false);
+        alert('تم تسجيل الخروج');
+    }
+
+    // show all admin controls by default (login handled on separate setup page)
+    document.addEventListener('DOMContentLoaded', () => {
+        showAdminControls(true);
+
+        // Auto-fill prices when cash price (سعر الكاش) is entered:
+        const cashInput = document.getElementById('pPriceOffer');
+        const quaraInput = document.getElementById('pPrice'); // كوارا مورا
+        const tamaraInput = document.getElementById('pPriceWholesale'); // تابي تمارا
+        if(cashInput) {
+            cashInput.addEventListener('input', () => {
+                const cash = parseFloat(cashInput.value) || 0;
+                const quara = Math.round(cash + 200); // كوارا مورا = سعر الكاش + 200
+                const tamara = Math.round(cash * 1.07); // تابي تمارا = سعر الكاش + 7%
+                if(quaraInput) quaraInput.value = quara;
+                if(tamaraInput) tamaraInput.value = tamara;
+            });
+        }
+    });
+
+    // 1. تحديث السلايدر
+    function updateSlider() {
+        const title = document.getElementById('sliderTitle').value;
+        const img = document.getElementById('sliderImg').value;
+        if(title && img) {
+            db.ref('homepage/slider').set({ title, img })
+            .then(() => alert("تم تحديث الواجهة بنجاح!"));
+        } else { alert("يرجى تعبئة بيانات السلايدر"); }
+    }
+    // client-side storage options array (for building JSON)
+    window.currentStorageOptions = [];
+    
+    // client-side colors array
+    window.currentColors = [];
+    let currentColorImageData = null;
+    let currentColorStorageOptions = [];
+    let editingColorIndex = -1;
+
+    // storage UI handlers
+    const addBtn = document.getElementById('addStorageBtn');
+    const storageForm = document.getElementById('storageForm');
+    const addConfirm = document.getElementById('addStorageConfirm');
+    const addCancel = document.getElementById('addStorageCancel');
+    const storageListEl = document.getElementById('storageList');
+
+    if(addBtn) addBtn.addEventListener('click', () => { storageForm.style.display = storageForm.style.display === 'none' ? 'block' : 'none'; });
+    if(addCancel) addCancel.addEventListener('click', () => { storageForm.style.display = 'none'; clearStorageInputs(); });
+    if(addConfirm) addConfirm.addEventListener('click', () => {
+        const lbl = (document.getElementById('storageLabel').value || '').trim();
+        const sp = Number(document.getElementById('storagePrice').value || 0);
+        const sw = Number(document.getElementById('storagePriceWholesale').value || 0);
+        const so = Number(document.getElementById('storagePriceOffer').value || 0);
+        if(!lbl) { alert('ادخل اسم السعة'); return; }
+        window.currentStorageOptions.push({ label: lbl, price: sp, priceWholesale: sw, priceOffer: so });
+        renderStorageList();
+        syncTextarea();
+        clearStorageInputs();
+        storageForm.style.display = 'none';
+    });
+
+    function clearStorageInputs(){ document.getElementById('storageLabel').value=''; document.getElementById('storagePrice').value=''; document.getElementById('storagePriceWholesale').value=''; document.getElementById('storagePriceOffer').value=''; }
+
+    function renderStorageList(){
+        if(!storageListEl) return;
+        if(!window.currentStorageOptions || !window.currentStorageOptions.length){ storageListEl.innerHTML = '<small style="color:#666">لا توجد خيارات سعة حالياً</small>'; return; }
+        storageListEl.innerHTML = '';
+        window.currentStorageOptions.forEach((s, idx) => {
+            const div = document.createElement('div');
+            div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.alignItems = 'center'; div.style.background = '#fff'; div.style.padding = '8px'; div.style.borderRadius = '8px'; div.style.marginBottom = '6px';
+            div.innerHTML = `<div><strong>${s.label}</strong> — ${s.price} ريـال | ${s.priceWholesale} | ${s.priceOffer}</div><div><button type=\"button\" onclick=\"removeStorage(${idx})\" style=\"background:#dc3545;color:#fff;border:none;padding:6px 8px;border-radius:6px;\">حذف</button></div>`;
+            storageListEl.appendChild(div);
+        });
+    }
+
+    window.removeStorage = function(i){ window.currentStorageOptions.splice(i,1); renderStorageList(); syncTextarea(); }
+
+    window.clearStorageList = function(){ if(confirm('مسح كل خيارات السعة؟')){ window.currentStorageOptions = []; renderStorageList(); syncTextarea(); } }
+
+    function syncTextarea(){ const ta = document.getElementById('pStorage'); if(ta) ta.value = JSON.stringify(window.currentStorageOptions); }
+
+    // render init
+    renderStorageList();
+
+    // === حساب الأسعار التلقائي ===
+    window.calculateColorPrices = function() {
+        const cashPrice = Number(document.getElementById('colorPriceOffer').value || 0);
+        if (cashPrice > 0) {
+            const kowaraPrice = Math.round(cashPrice + 200);
+            const tabiPrice = Math.round(cashPrice * 1.07);
+            document.getElementById('colorPrice').value = kowaraPrice;
+            document.getElementById('colorPriceWholesale').value = tabiPrice;
+        }
+    };
+
+    window.calculateColorStoragePrices = function() {
+        const cashPrice = Number(document.getElementById('colorStoragePriceOffer').value || 0);
+        if (cashPrice > 0) {
+            const kowaraPrice = Math.round(cashPrice + 200);
+            const tabiPrice = Math.round(cashPrice * 1.07);
+            document.getElementById('colorStoragePrice').value = kowaraPrice;
+            document.getElementById('colorStoragePriceWholesale').value = tabiPrice;
+        }
+    };
+
+    // === Colors management ===
+    const addColorBtn = document.getElementById('addColorBtn');
+    const colorForm = document.getElementById('colorForm');
+    const addColorConfirm = document.getElementById('addColorConfirm');
+    const addColorCancel = document.getElementById('addColorCancel');
+    const colorsListEl = document.getElementById('colorsList');
+    const colorImageInput = document.getElementById('colorImage');
+    const colorImagePreview = document.getElementById('colorImagePreview');
+    const addColorStorageBtn = document.getElementById('addColorStorageBtn');
+    const clearColorStorageBtn = document.getElementById('clearColorStorageBtn');
+    const colorStorageForm = document.getElementById('colorStorageForm');
+    const addColorStorageConfirm = document.getElementById('addColorStorageConfirm');
+    const addColorStorageCancel = document.getElementById('addColorStorageCancel');
+    const colorStorageListEl = document.getElementById('colorStorageList');
+
+    if(addColorBtn) addColorBtn.addEventListener('click', () => {
+        colorForm.style.display = colorForm.style.display === 'none' ? 'block' : 'none';
+    });
+
+    if(addColorCancel) addColorCancel.addEventListener('click', () => {
+        colorForm.style.display = 'none';
+        editingColorIndex = -1;
+        clearColorInputs();
+    });
+
+    if(addColorStorageBtn) addColorStorageBtn.addEventListener('click', () => {
+        if(!colorStorageForm) return;
+        colorStorageForm.style.display = colorStorageForm.style.display === 'none' ? 'block' : 'none';
+    });
+
+    if(addColorStorageCancel) addColorStorageCancel.addEventListener('click', () => {
+        if(colorStorageForm) colorStorageForm.style.display = 'none';
+        clearColorStorageInputs();
+    });
+
+    if(addColorStorageConfirm) addColorStorageConfirm.addEventListener('click', () => {
+        const lbl = (document.getElementById('colorStorageLabel').value || '').trim();
+        const sp = Number(document.getElementById('colorStoragePrice').value || 0);
+        const sw = Number(document.getElementById('colorStoragePriceWholesale').value || 0);
+        const so = Number(document.getElementById('colorStoragePriceOffer').value || 0);
+        if(!lbl) { alert('ادخل اسم السعة'); return; }
+        currentColorStorageOptions.push({ label: lbl, price: sp, priceWholesale: sw, priceOffer: so });
+        renderColorStorageList();
+        clearColorStorageInputs();
+        if(colorStorageForm) colorStorageForm.style.display = 'none';
+    });
+
+    if(colorImageInput) colorImageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        if(!file.type.startsWith('image/')) {
+            alert('الرجاء اختيار ملف صورة.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            currentColorImageData = ev.target.result;
+            colorImagePreview.src = currentColorImageData;
+            colorImagePreview.style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    if(addColorConfirm) addColorConfirm.addEventListener('click', () => {
+        const name = (document.getElementById('colorName').value || '').trim();
+        const code = document.getElementById('colorCode').value;
+        const price = Number(document.getElementById('colorPrice').value || 0);
+        const priceWholesale = Number(document.getElementById('colorPriceWholesale').value || 0);
+        const priceOffer = Number(document.getElementById('colorPriceOffer').value || 0);
+        
+        if(!name) {
+            alert('ادخل اسم اللون');
+            return;
+        }
+        
+        if(!currentColorImageData && editingColorIndex === -1) {
+            alert('يجب اختيار صورة للون');
+            return;
+        }
+
+        if(!currentColorStorageOptions.length) {
+            alert('أضف سعة واحدة على الأقل لهذا اللون');
+            return;
+        }
+        
+        const colorObj = {
+            name: name,
+            code: code,
+            price: price,
+            priceWholesale: priceWholesale,
+            priceOffer: priceOffer,
+            image: currentColorImageData || (editingColorIndex !== -1 ? window.currentColors[editingColorIndex].image : null),
+            storageOptions: currentColorStorageOptions.map(o => ({
+                label: o.label,
+                price: Number(o.price||0),
+                priceWholesale: Number(o.priceWholesale||0),
+                priceOffer: Number(o.priceOffer||0)
+            }))
+        };
+        
+        if(editingColorIndex !== -1) {
+            window.currentColors[editingColorIndex] = colorObj;
+            editingColorIndex = -1;
+        } else {
+            window.currentColors.push(colorObj);
+        }
+        
+        renderColorsList();
+        clearColorInputs();
+        colorForm.style.display = 'none';
+    });
+
+    function clearColorInputs() {
+        document.getElementById('colorName').value = '';
+        document.getElementById('colorCode').value = '#000000';
+        document.getElementById('colorPrice').value = '';
+        document.getElementById('colorPriceWholesale').value = '';
+        document.getElementById('colorPriceOffer').value = '';
+        document.getElementById('colorImage').value = '';
+        colorImagePreview.src = '';
+        colorImagePreview.style.display = 'none';
+        currentColorImageData = null;
+        currentColorStorageOptions = [];
+        renderColorStorageList();
+        clearColorStorageInputs();
+        editingColorIndex = -1;
+        const btn = document.getElementById('addColorConfirm');
+        if(btn) btn.innerText = 'إضافة اللون';
+    }
+
+    function clearColorStorageInputs() {
+        const l = document.getElementById('colorStorageLabel');
+        const p = document.getElementById('colorStoragePrice');
+        const w = document.getElementById('colorStoragePriceWholesale');
+        const o = document.getElementById('colorStoragePriceOffer');
+        if(l) l.value = '';
+        if(p) p.value = '';
+        if(w) w.value = '';
+        if(o) o.value = '';
+    }
+
+    function renderColorStorageList() {
+        if(!colorStorageListEl) return;
+        if(!currentColorStorageOptions.length) {
+            colorStorageListEl.innerHTML = '<small style="color:#666">لا توجد سعات لهذا اللون</small>';
+            return;
+        }
+        colorStorageListEl.innerHTML = '';
+        currentColorStorageOptions.forEach((s, idx) => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.background = '#fff';
+            div.style.padding = '8px';
+            div.style.borderRadius = '8px';
+            div.style.marginBottom = '6px';
+            div.innerHTML = `<div><strong>${s.label}</strong> — ${s.price} | ${s.priceWholesale} | ${s.priceOffer}</div><div><button type=\"button\" onclick=\"removeColorStorage(${idx})\" style=\"background:#dc3545;color:#fff;border:none;padding:6px 8px;border-radius:6px;\">حذف</button></div>`;
+            colorStorageListEl.appendChild(div);
+        });
+    }
+
+    window.removeColorStorage = function(i) {
+        currentColorStorageOptions.splice(i,1);
+        renderColorStorageList();
+    }
+
+    window.clearColorStorageList = function() {
+        if(confirm('مسح كل السعات لهذا اللون؟')) {
+            currentColorStorageOptions = [];
+            renderColorStorageList();
+        }
+    }
+
+    function renderColorsList() {
+        if(!colorsListEl) return;
+        if(!window.currentColors || !window.currentColors.length) {
+            colorsListEl.innerHTML = '<small style="color:#666">لا توجد ألوان حالياً</small>';
+            return;
+        }
+        colorsListEl.innerHTML = '';
+        window.currentColors.forEach((color, idx) => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.background = '#fff';
+            div.style.padding = '10px';
+            div.style.borderRadius = '8px';
+            div.style.marginBottom = '8px';
+            div.style.border = '2px solid ' + color.code;
+            div.innerHTML = `
+                <img src="${color.image}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; margin-left:10px;">
+                <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <strong>${color.name}</strong>
+                        <div style="width:30px; height:30px; background:${color.code}; border-radius:50%; border:2px solid #ddd;"></div>
+                    </div>
+                    <small style="color:#666;">
+                        كوارا مورا: ${color.price} | تابي تمارا: ${color.priceWholesale} | كاش: ${color.priceOffer}
+                        ${color.storageOptions && color.storageOptions.length ? ` | سعات: ${color.storageOptions.length}` : ''}
+                    </small>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button type="button" onclick="editColor(${idx})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600;">تعديل</button>
+                    <button type="button" onclick="removeColor(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">حذف</button>
+                </div>
+            `;
+            colorsListEl.appendChild(div);
+        });
+    }
+
+    window.editColor = function(idx) {
+        if(idx < 0 || idx >= window.currentColors.length) return;
+        editingColorIndex = idx;
+        const color = window.currentColors[idx];
+        
+        document.getElementById('colorName').value = color.name || '';
+        document.getElementById('colorCode').value = color.code || '#000000';
+        document.getElementById('colorPrice').value = color.price || '';
+        document.getElementById('colorPriceWholesale').value = color.priceWholesale || '';
+        document.getElementById('colorPriceOffer').value = color.priceOffer || '';
+        
+        if(color.image) {
+            currentColorImageData = color.image;
+            colorImagePreview.src = color.image;
+            colorImagePreview.style.display = 'inline-block';
+        }
+        
+        currentColorStorageOptions = Array.isArray(color.storageOptions) ? color.storageOptions.map(o => ({
+            label: o.label,
+            price: Number(o.price||0),
+            priceWholesale: Number(o.priceWholesale||0),
+            priceOffer: Number(o.priceOffer||0)
+        })) : [];
+        renderColorStorageList();
+        
+        const btn = document.getElementById('addColorConfirm');
+        if(btn) btn.innerText = 'حفظ التعديلات';
+        colorForm.style.display = 'block';
+        window.scrollTo(0, colorForm.offsetTop);
+    };
+
+    window.removeColor = function(idx) {
+        if(confirm('هل تريد حذف هذا اللون؟')) {
+            window.currentColors.splice(idx, 1);
+            renderColorsList();
+        }
+    };
+
+    window.clearColorsList = function() {
+        if(confirm('مسح كل الألوان؟')) {
+            window.currentColors = [];
+            renderColorsList();
+        }
+    };
+
+    // render init colors
+    renderColorsList();
+
+    // 2. حفظ (إضافة أو تعديل) منتج
+   function saveProduct() {
+    const id = document.getElementById('editId').value;
+    const name = (document.getElementById('pName').value || '').trim();
+    const img = (document.getElementById('pImg').value || '').trim();
+    const category = (document.getElementById('pCategory').value || '').trim();
+    const price = (document.getElementById('pPrice').value || '').trim();
+    const priceWholesale = (document.getElementById('pPriceWholesale').value || '').trim();
+    const priceOffer = (document.getElementById('pPriceOffer').value || '').trim();
+
+    const missing = [];
+    if(!name) missing.push('اسم المنتج');
+    if(!category) missing.push('التصنيف');
+    if(!price) missing.push('سعر كوارا مورا');
+    if(!priceWholesale) missing.push('سعر تابي تمارا');
+    if(!priceOffer) missing.push('سعر الكاش');
+
+    if(missing.length) {
+        alert('الرجاء تعبئة الحقول التالية قبل الحفظ:\n- ' + missing.join('\n- '));
+        return;
+    }
+
+    const productData = {
+        name,
+        img,
+        category,
+        price: Number(price),
+        priceWholesale: Number(priceWholesale),
+        priceOffer: Number(priceOffer)
+    };
+
+    // read storage options JSON if provided
+    const storageText = (document.getElementById('pStorage').value || '').trim();
+    if(storageText) {
+        try {
+            const parsed = JSON.parse(storageText);
+            if(Array.isArray(parsed)) productData.storageOptions = parsed.map(o => ({ label: o.label, price: Number(o.price||0), priceWholesale: Number(o.priceWholesale||0), priceOffer: Number(o.priceOffer||0) }));
+            else alert('حقل السعات يجب أن يحتوي على مصفوفة JSON');
+        } catch(err) {
+            alert('خطأ في تنسيق JSON الخاص بالسعات: ' + err.message);
+            return;
+        }
+    }
+
+    // Add colors if available
+    if(window.currentColors && window.currentColors.length > 0) {
+        productData.colors = window.currentColors;
+        if(!productData.img && window.currentColors[0] && window.currentColors[0].image) {
+            productData.img = window.currentColors[0].image;
+        }
+    }
+
+    if(!productData.img) {
+        alert('الرجاء إضافة صورة للون أو صورة للمنتج');
+        return;
+    }
+
+    if(id) db.ref('homepage/products/' + id).update(productData);
+    else db.ref('homepage/products').push(productData);
+    resetForm();
+}
+
+    // 3. حذف منتج
+    function deleteProduct(id) {
+        if(confirm("هل أنت متأكد من حذف هذا المنتج نهائياً؟")) {
+            db.ref('homepage/products/' + id).remove();
+        }
+    }
+
+    // دالة تحميل المنتج للتعديل
+    function loadProductForEdit(id, encodedData) {
+        try {
+            const p = JSON.parse(decodeURIComponent(encodedData));
+            editProduct(id, p.name, p.price, p.img, p.category, p.storageOptions, p.colors, p.priceWholesale, p.priceOffer);
+        } catch(e) {
+            alert('خطأ في تحميل بيانات المنتج: ' + e.message);
+        }
+    }
+
+    // 4. تجهيز النموذج للتعديل
+    function editProduct(id, name, price, img, cat, storageOptions, colors, priceWholesale, priceOffer) {
+        document.getElementById('editId').value = id;
+        document.getElementById('pName').value = name;
+        document.getElementById('pPrice').value = price;
+        document.getElementById('pPriceWholesale').value = priceWholesale || '';
+        document.getElementById('pPriceOffer').value = priceOffer || '';
+        document.getElementById('pImg').value = img;
+        document.getElementById('pCategory').value = cat;
+        // populate storage JSON if available
+        try {
+            if(storageOptions){
+                document.getElementById('pStorage').value = JSON.stringify(storageOptions, null, 2);
+                // also populate working array and render list
+                window.currentStorageOptions = Array.isArray(storageOptions) ? storageOptions.map(o => ({ label: o.label, price: Number(o.price||0), priceWholesale: Number(o.priceWholesale||0), priceOffer: Number(o.priceOffer||0) })) : [];
+                renderStorageList();
+            } else { document.getElementById('pStorage').value = ''; window.currentStorageOptions = []; renderStorageList(); }
+        } catch(e) { document.getElementById('pStorage').value = ''; }
+
+        // populate colors if available
+        try {
+            if(colors && Array.isArray(colors)){
+                window.currentColors = colors.map(c => ({
+                    name: c.name || '',
+                    code: c.code || '#000000',
+                    price: Number(c.price||0),
+                    priceWholesale: Number(c.priceWholesale||0),
+                    priceOffer: Number(c.priceOffer||0),
+                    image: c.image || '',
+                    storageOptions: Array.isArray(c.storageOptions) ? c.storageOptions.map(o => ({
+                        label: o.label,
+                        price: Number(o.price||0),
+                        priceWholesale: Number(o.priceWholesale||0),
+                        priceOffer: Number(o.priceOffer||0)
+                    })) : []
+                }));
+                renderColorsList();
+            } else { window.currentColors = []; renderColorsList(); }
+        } catch(e) { window.currentColors = []; renderColorsList(); }
+
+        document.getElementById('formTitle').innerText = "✏️ تعديل المنتج حالياً";
+        document.getElementById('saveBtn').innerText = "حفظ التغييرات";
+        document.getElementById('saveBtn').style.background = "#ffc107";
+        document.getElementById('cancelBtn').style.display = "block";
+        window.scrollTo(0,0);
+    }
+
+    function resetForm() {
+        document.getElementById('editId').value = '';
+        document.getElementById('pName').value = '';
+        document.getElementById('pImg').value = '';
+        const cat = document.getElementById('pCategory');
+        if(cat) cat.value = 'عام';
+        document.getElementById('pPrice').value = '';
+        document.getElementById('pPriceWholesale').value = '';
+        document.getElementById('pPriceOffer').value = '';
+        document.getElementById('pStorage').value = '';
+        window.currentStorageOptions = [];
+        renderStorageList();
+        window.currentColors = [];
+        renderColorsList();
+        editingColorIndex = -1;
+        const colorBtn = document.getElementById('addColorConfirm');
+        if(colorBtn) colorBtn.innerText = 'إضافة اللون';
+        document.getElementById('formTitle').innerText = "📦 إضافة منتج جديد";
+        const saveBtn = document.getElementById('saveBtn');
+        if(saveBtn) { saveBtn.innerText = 'حفظ المنتج'; saveBtn.style.background = 'var(--success)'; }
+        const cancelBtn = document.getElementById('cancelBtn');
+        if(cancelBtn) cancelBtn.style.display = 'none';
+    }
+
+    // 5. عرض المنتجات في لوحة التحكم بشكل لحظي
+    db.ref('homepage/products').on('value', (snap) => {
+        const listDiv = document.getElementById('adminProductsList');
+        if (!listDiv) return;
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
+        snap.forEach((child) => {
+            const p = child.val();
+            const id = child.key;
+            const encoded = encodeURIComponent(JSON.stringify(p));
+            tempDiv.innerHTML = `
+                <div class="product-item">
+                    <img src="${p.img}" onerror="this.src='https://via.placeholder.com/60'">
+                    <div class="product-info">
+                        <strong>${p.name}</strong> <br>
+                        <small>${p.price} ريال | ${p.category}</small>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-edit" onclick="loadProductForEdit('${id}', '${encoded}')">تعديل</button>
+                        <button class="btn-delete" onclick="deleteProduct('${id}')">حذف</button>
+                    </div>
+                </div>`;
+            fragment.appendChild(tempDiv.firstElementChild);
+        });
+        listDiv.innerHTML = '';
+        listDiv.appendChild(fragment);
+    });
+
+    // 6. لوجو الموقع - معاينة وحفظ
+    let logoDataURL = null;
+    function handleLogoFile(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        if(!file.type.startsWith('image/')) { alert('الرجاء اختيار ملف صورة.'); return; }
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            logoDataURL = ev.target.result;
+            const img = document.getElementById('logoPreview');
+            img.src = logoDataURL;
+            img.style.display = 'inline-block';
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function saveLogo() {
+        if(!logoDataURL) { alert('اختر صورة أولاً'); return; }
+        const name = (document.getElementById('logoFile').files[0] || {}).name || 'logo';
+        db.ref('homepage/logo').set({ data: logoDataURL, name })
+        .then(() => alert('تم حفظ اللوجو بنجاح'))
+        .catch((err) => alert('خطأ في الحفظ: ' + err.message));
+    }
+
+    /* ---------- إضافة: رفع وإدارة صور السلايدر ---------- */
+    let sliderFilesData = [];
+
+    function handleSliderFiles(e) {
+        const files = Array.from(e.target.files || []);
+        const preview = document.getElementById('sliderPreview');
+        if(!preview) return;
+        files.forEach(file => {
+            if(!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                sliderFilesData.push({ name: file.name, data: ev.target.result });
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.style.height = '60px'; img.style.borderRadius = '6px'; img.style.objectFit = 'cover';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function clearSliderPreview() {
+        sliderFilesData = [];
+        const preview = document.getElementById('sliderPreview'); if(preview) preview.innerHTML = '';
+        const inp = document.getElementById('sliderFiles'); if(inp) inp.value = '';
+    }
+
+    function uploadSliderFiles() {
+        if(!sliderFilesData.length) { alert('اختر ملفات صورة أولاً'); return; }
+        const pushes = [];
+        sliderFilesData.forEach(item => {
+            const ref = db.ref('homepage/slider/images').push();
+            pushes.push(ref.set({ data: item.data, name: item.name, createdAt: Date.now() }));
+        });
+        Promise.all(pushes).then(() => {
+            // تعيين أول صورة مرفوعة كصورة السلايدر الرئيسية (إن وُجد عنوان)
+            const title = document.getElementById('sliderTitle').value || '';
+            db.ref('homepage/slider').update({ img: sliderFilesData[0].data, title })
+            .then(() => {
+                alert('تم رفع صور السلايدر وتعيين الصورة الرئيسية');
+                clearSliderPreview();
+                loadSliderImages();
+            });
+        }).catch(err => alert('خطأ أثناء الرفع: ' + err.message));
+    }
+
+    function loadSliderImages() {
+        const list = document.getElementById('sliderImagesList');
+        if(!list) return;
+        db.ref('homepage/slider/images').on('value', snap => {
+            const val = snap.val();
+            if(!val) { list.innerHTML = '<small style="color:#666">لا توجد صور حالياً</small>'; return; }
+            const fragment = document.createDocumentFragment();
+            // عرض الأحدث أولاً
+            Object.keys(val).reverse().forEach(key => {
+                const it = val[key];
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative'; wrapper.style.display = 'inline-block'; wrapper.style.margin = '6px';
+                const img = document.createElement('img'); img.src = it.data; img.style.height='80px'; img.style.width='120px'; img.style.objectFit='cover'; img.style.borderRadius='6px';
+                const del = document.createElement('button'); del.innerText = 'حذف'; del.style.position='absolute'; del.style.right='4px'; del.style.top='4px'; del.style.padding='4px 6px'; del.style.background='#dc3545'; del.style.color='#fff'; del.style.border='none'; del.style.borderRadius='4px';
+                del.onclick = () => { if(confirm('هل تريد حذف هذه الصورة؟')) db.ref('homepage/slider/images/' + key).remove(); };
+                const setMain = document.createElement('button'); setMain.innerText = 'تعيين رئيسية'; setMain.style.position='absolute'; setMain.style.left='4px'; setMain.style.bottom='4px'; setMain.style.padding='4px 6px'; setMain.style.background='#007bff'; setMain.style.color='#fff'; setMain.style.border='none'; setMain.style.borderRadius='4px';
+                setMain.onclick = () => { db.ref('homepage/slider').update({ img: it.data }).then(()=>alert('تم تعيين الصورة الرئيسية')); };
+                wrapper.appendChild(img); wrapper.appendChild(del); wrapper.appendChild(setMain);
+                fragment.appendChild(wrapper);
+            });
+            list.innerHTML = '';
+            list.appendChild(fragment);
+        });
+    }
+
+    // Initial load of slider images when admin opens page
+    loadSliderImages();
+
+    // عرض أي لوجو محفوظ عند فتح لوحة التحكم
+    db.ref('homepage/logo').on('value', (snap) => {
+        const v = snap.val();
+        if(v && v.data) {
+            const img = document.getElementById('logoPreview');
+            img.src = v.data;
+            img.style.display = 'inline-block';
+        }
+    });
+
+    // معالج رفع صورة الدرس المصغرة
+    let tutorialThumbDataURL = null;
+    function handleTutorialThumb(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        if(!file.type.startsWith('image/')) { alert('الرجاء اختيار ملف صورة.'); return; }
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            tutorialThumbDataURL = ev.target.result;
+            const img = document.getElementById('tutorialThumbPreview');
+            img.src = tutorialThumbDataURL;
+            img.style.display = 'inline-block';
+        }
+        reader.readAsDataURL(file);
+    }
+
+    // إضافة/تعديل دروس من لوحة التحكم (بدون قيود)
+    function adminAddTutorial(){
+        const editId = document.getElementById('editTutorialId').value;
+        const title = (document.getElementById('adminTTitle').value || '').trim();
+        const content = (document.getElementById('adminTContent').value || '').trim();
+        if(!title){ alert('ادخل عنوان الدرس'); return; }
+        
+        const data = { title, content };
+        // استخدم الصورة المرفوعة إن وُجدت، وإلا احتفظ بالصورة القديمة في حالة التعديل
+        if(tutorialThumbDataURL) data.thumb = tutorialThumbDataURL;
+        if(!editId) data.createdAt = Date.now();
+        
+        if(editId) {
+            db.ref('help/tutorials/' + editId).update(data).then(()=>{ alert('تم تحديث الدرس'); adminClearTutorialForm(); }).catch(err=>alert('خطأ: '+err.message));
+        } else {
+            db.ref('help/tutorials').push(data).then(()=>{ alert('تم إضافة الدرس إلى مركز التعليمات'); adminClearTutorialForm(); }).catch(err=>alert('خطأ: '+err.message));
+        }
+    }
+
+    function adminClearTutorialForm(){
+        document.getElementById('editTutorialId').value = '';
+        const t = document.getElementById('adminTTitle'); if(t) t.value='';
+        const th = document.getElementById('adminTThumb'); if(th) th.value='';
+        const c = document.getElementById('adminTContent'); if(c) c.value='';
+        const preview = document.getElementById('tutorialThumbPreview'); if(preview) { preview.src=''; preview.style.display='none'; }
+        const formTitle = document.getElementById('tutorialFormTitle'); if(formTitle) formTitle.innerText = '📚 إدارة الدروس';
+        tutorialThumbDataURL = null;
+    }
+
+    // تحميل وعرض الدروس في لوحة التحكم
+    function loadAdminTutorials(){
+        const list = document.getElementById('adminTutorialsList');
+        if(!list) return;
+        db.ref('help/tutorials').on('value', snap => {
+            const val = snap.val();
+            if(!val) { list.innerHTML = '<p style="color:#666;">لا توجد دروس حالياً</p>'; return; }
+            const fragment = document.createDocumentFragment();
+            Object.keys(val).reverse().forEach(key => {
+                const t = val[key];
+                const item = document.createElement('div');
+                item.className = 'product-item';
+                item.innerHTML = `
+                    <img src="${t.thumb || 'https://via.placeholder.com/60'}" onerror="this.src='https://via.placeholder.com/60'">
+                    <div class="product-info">
+                        <strong>${t.title}</strong><br>
+                        <small></small>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-edit" onclick="editTutorial('${key}', ${JSON.stringify(t).replace(/"/g, '&quot;')})">تعديل</button>
+                        <button class="btn-delete" onclick="deleteTutorial('${key}')">حذف</button>
+                    </div>
+                `;
+                fragment.appendChild(item);
+            });
+            list.innerHTML = '';
+            list.appendChild(fragment);
+        });
+    }
+
+    function editTutorial(id, data){
+        document.getElementById('editTutorialId').value = id;
+        document.getElementById('adminTTitle').value = data.title || '';
+        document.getElementById('adminTContent').value = data.content || '';
+        if(data.thumb) {
+            tutorialThumbDataURL = data.thumb;
+            const preview = document.getElementById('tutorialThumbPreview');
+            preview.src = data.thumb;
+            preview.style.display = 'inline-block';
+        }
+        const formTitle = document.getElementById('tutorialFormTitle');
+        if(formTitle) formTitle.innerText = '✏️ تعديل الدرس';
+        window.scrollTo(0, 0);
+    }
+
+    function deleteTutorial(id){
+        if(confirm('هل أنت متأكد من حذف هذا الدرس؟')){
+            db.ref('help/tutorials/' + id).remove().then(()=>alert('تم حذف الدرس')).catch(err=>alert('خطأ: '+err.message));
+        }
+    }
+
+    // تحميل الدروس عند فتح الصفحة
+    loadAdminTutorials();
+
+    // ========== إدارة المستخدمين ==========
+    async function saveUser() {
+        const userId = document.getElementById('editUserId').value;
+        const username = (document.getElementById('userName').value || '').trim();
+        const password = (document.getElementById('userPassword').value || '').trim();
+        const email = (document.getElementById('userEmail').value || '').trim();
+
+        if (!username) {
+            alert('الرجاء إدخال اسم المستخدم');
+            return;
+        }
+
+        if (!userId && !password) {
+            alert('الرجاء إدخال كلمة المرور للمستخدم الجديد');
+            return;
+        }
+
+        // جمع الصلاحيات
+        const permissions = [];
+        document.querySelectorAll('.user-permission:checked').forEach(cb => {
+            permissions.push(cb.value);
+        });
+
+        const userData = {
+            username: username,
+            email: email || '',
+            permissions: permissions,
+            updatedAt: new Date().toISOString()
+        };
+
+        // إضافة createdAt فقط للمستخدمين الجدد
+        if (!userId) {
+            userData.createdAt = new Date().toISOString();
+        }
+
+        // تشفير كلمة المرور إذا تم إدخالها
+        if (password) {
+            try {
+                const hashedPassword = await hashString(password);
+                userData.password = hashedPassword;
+            } catch (e) {
+                alert('خطأ في تشفير كلمة المرور');
+                return;
+            }
+        }
+
+        try {
+            if (userId) {
+                // تحديث مستخدم موجود
+                await db.ref('admin/users/' + userId).update(userData);
+                alert('تم تحديث المستخدم بنجاح');
+            } else {
+                // إضافة مستخدم جديد
+                await db.ref('admin/users').push(userData);
+                alert('تم إضافة المستخدم بنجاح');
+            }
+            clearUserForm();
+        } catch (err) {
+            alert('خطأ في حفظ المستخدم: ' + err.message);
+        }
+    }
+
+    function clearUserForm() {
+        document.getElementById('editUserId').value = '';
+        document.getElementById('userName').value = '';
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userEmail').value = '';
+        document.querySelectorAll('.user-permission').forEach(cb => {
+            if (cb.value === 'users') {
+                cb.checked = false;
+            } else {
+                cb.checked = true;
+            }
+        });
+        const formTitle = document.getElementById('userFormTitle');
+        if (formTitle) formTitle.innerText = '👥 إدارة المستخدمين';
+        const saveBtn = document.getElementById('saveUserBtn');
+        if (saveBtn) saveBtn.innerText = 'حفظ المستخدم';
+    }
+
+    function loadUsers() {
+        const list = document.getElementById('usersList');
+        if (!list) return;
+        
+        db.ref('admin/users').on('value', snap => {
+            const val = snap.val();
+            if (!val) {
+                list.innerHTML = '<p style="color:#666;">لا يوجد مستخدمين حالياً</p>';
+                return;
+            }
+            
+            const fragment = document.createDocumentFragment();
+            Object.keys(val).forEach(key => {
+                const user = val[key];
+                const item = document.createElement('div');
+                item.className = 'product-item';
+                
+                const permissionsText = (user.permissions || []).length > 0 
+                    ? user.permissions.join(', ') 
+                    : 'بدون صلاحيات';
+                
+                item.innerHTML = `
+                    <div style="width:60px;height:60px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:bold;">
+                        ${user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="product-info">
+                        <strong>${user.username}</strong><br>
+                        <small>📧 ${user.email || 'لا يوجد بريد'}</small><br>
+                        <small style="color:#007bff;">🔐 ${permissionsText}</small>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-edit" onclick="editUser('${key}')">تعديل</button>
+                        <button class="btn-delete" onclick="deleteUser('${key}')">حذف</button>
+                    </div>
+                `;
+                fragment.appendChild(item);
+            });
+            list.innerHTML = '';
+            list.appendChild(fragment);
+        });
+    }
+
+    function editUser(userId) {
+        db.ref('admin/users/' + userId).once('value').then(snap => {
+            const user = snap.val();
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('userName').value = user.username || '';
+            document.getElementById('userEmail').value = user.email || '';
+            document.getElementById('userPassword').value = ''; // لا نعرض كلمة المرور
+            
+            // تحديد الصلاحيات
+            document.querySelectorAll('.user-permission').forEach(cb => {
+                cb.checked = (user.permissions || []).includes(cb.value);
+            });
+            
+            const formTitle = document.getElementById('userFormTitle');
+            if (formTitle) formTitle.innerText = '✏️ تعديل مستخدم';
+            const saveBtn = document.getElementById('saveUserBtn');
+            if (saveBtn) saveBtn.innerText = 'حفظ التعديلات';
+            
+            window.scrollTo(0, 0);
+        });
+    }
+
+    function deleteUser(userId) {
+        if (confirm('هل أنت متأكد من حذف هذا المستخدم؟ لن يتمكن من الدخول بعد الحذف.')) {
+            db.ref('admin/users/' + userId).remove()
+                .then(() => alert('تم حذف المستخدم بنجاح'))
+                .catch(err => alert('خطأ في الحذف: ' + err.message));
+        }
+    }
+
+    // تحميل المستخدمين عند فتح الصفحة
+    loadUsers();
+    
+    // فحص حالة تسجيل الدخول عند تحميل الصفحة
+    checkLoginStatus();
+</script>
+</body>
+</html>

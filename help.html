@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>مركز التعليمات — دروس</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: #fffcff; color: #333; }
+    
+    /* Header styling - preserve original design */
+    header { 
+      background: rgb(77, 14, 99);
+      padding: 8px 20px;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.6);
+      margin-bottom: 20px;
+    }
+    .header-inner { 
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .logo { 
+      height: 50px;
+      width: auto;
+    }
+    .header-title { 
+      margin: 0;
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+    
+    .help-layout { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .main { width: 100%; }
+    .side { display: none; }
+    .tabs { display: none; }
+    .card { background: #ffffff; padding: 0; border-radius: 0; box-shadow: none; border: none; transition: none; }
+    .card:hover { transform: none; box-shadow: none; }
+    h2 { color: #2c3e50; }
+    #tutorials-section { padding: 0; }
+    #tutorials-section > div:first-child { display: none; }
+    #add-form { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
+    form input, form textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #000; margin-bottom: 10px; }
+    .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; background: #007bff; color: #fff; }
+    #tutorialsList { display: flex; flex-direction: column; gap: 0; }
+    .faq-item { border-bottom: 1px solid #e5e5e5; padding: 18px 0; cursor: pointer; }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-header { display: flex; justify-content: space-between; align-items: center; }
+    .faq-question { margin: 0; font-size: 16px; font-weight: 500; color: #333; }
+    .faq-icon { font-size: 18px; color: #666; transition: transform 0.3s ease; }
+    .faq-item.expanded .faq-icon { transform: rotate(180deg); }
+    .tutorial-details { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; padding: 0; }
+    .faq-item.expanded .tutorial-details { max-height: 2000px; padding-top: 15px; }
+    .tutorial-details p { color: #666; line-height: 1.6; }
+    .tutorial-details img { max-width: 30%; height: auto; border-radius: 8px; margin: 10px 0; display: block; }
+    .btn-accent { background: #007bff; color: #fff; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <img id="siteLogo" class="logo" src=";utf8, <svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect fill='%232c3e50' width='100%25' height='100%25'/><text x='50%25' y='50%25' font-size='22' fill='%23ffffff' dominant-baseline='middle' text-anchor='middle'>M</text></svg>" alt="logo">
+      <h1 class="header-title">مركز التعليمات والدعم</h1>
+      <button id="menu-toggle" class="menu-toggle" aria-label="فتح القائمة">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="main-nav" id="main-nav" aria-label="أقسام الموقع">
+        <a href="index.html">الرئيسية</a>
+        <a href="#">التعليمات والدعم</a>
+        <a href="#">العروض</a>
+        <a href="#">تواصل</a>
+      </nav>
+    </div>
+  </header>
+  <script>
+    const menuToggle = document.getElementById('menu-toggle');
+    const mainNav = document.getElementById('main-nav');
+    menuToggle.addEventListener('click', () => {
+      mainNav.classList.toggle('active');
+      menuToggle.classList.toggle('active');
+    });
+    mainNav.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        mainNav.classList.remove('active');
+        menuToggle.classList.remove('active');
+      });
+    });
+  </script>
+
+  <div class="container help-layout">
+    <main class="main">
+      <section id="tutorials-section" class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h2 style="margin:0">الاستعلامات!!!</h2>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <input type="text" id="searchInput" placeholder="🔍 ابحث عن المشكلة..." style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px;background:#fff;">
+        </div>
+
+        <div id="tutorialsList"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Firebase config (متطابق مع index.html)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDdLB3KHZVbNw3O9QrKJzBw2pL_pFn8Iso",
+      databaseURL: "https://mazen-2ba04-default-rtdb.firebaseio.com",
+      projectId: "mazen-2ba04"
+    };
+    if(!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const md = window.markdownit();
+
+    // عناصر
+    const tutorialsList = document.getElementById('tutorialsList');
+    const searchInput = document.getElementById('searchInput');
+    let allTutorials = [];
+
+    // تحميل الدروس من Firebase
+    function renderTutorialCard(key, data){
+      const wrapper = document.createElement('div'); wrapper.className = 'faq-item';
+      wrapper.dataset.title = (data.title || '').toLowerCase();
+      wrapper.dataset.content = (data.content || '').toLowerCase();
+
+      const header = document.createElement('div'); header.className = 'faq-header';
+      const question = document.createElement('h3'); question.className = 'faq-question'; question.innerText = data.title || 'بدون عنوان';
+      const icon = document.createElement('span'); icon.className = 'faq-icon'; icon.innerHTML = '&#9662;';
+      header.appendChild(question); header.appendChild(icon);
+      
+      const details = document.createElement('div'); details.className = 'tutorial-details';
+      
+      if(data.thumb){
+        const img = document.createElement('img'); img.src = data.thumb; img.alt = data.title || '';
+        details.appendChild(img);
+      }
+      
+      const content = document.createElement('div');
+      content.innerHTML = md.render(data.content || '');
+      details.appendChild(content);
+
+      header.addEventListener('click', () => { wrapper.classList.toggle('expanded'); });
+      
+      wrapper.appendChild(header);
+      wrapper.appendChild(details);
+      return wrapper;
+    }
+
+    // وظيفة البحث
+    function filterTutorials() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const items = tutorialsList.querySelectorAll('.faq-item');
+      
+      items.forEach(item => {
+        const title = item.dataset.title || '';
+        const content = item.dataset.content || '';
+        
+        if (title.includes(searchTerm) || content.includes(searchTerm)) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // ربط حدث البحث
+    if (searchInput) {
+      searchInput.addEventListener('input', filterTutorials);
+    }
+
+    db.ref('help/tutorials').once('value').then(snap => {
+      const val = snap.val() || {};
+      const fragment = document.createDocumentFragment();
+      tutorialsList.innerHTML = '';
+      allTutorials = [];
+      Object.keys(val).reverse().forEach(k => {
+        const el = renderTutorialCard(k, val[k]);
+        fragment.appendChild(el);
+        allTutorials.push({ key: k, data: val[k], element: el });
+      });
+      tutorialsList.appendChild(fragment);
+    }).catch(err => console.error('خطأ في تحميل الدروس:', err));
+
+    // تحميل لوجو من DB إن وُجد
+    db.ref('homepage/logo').once('value').then(snap=>{ const v = snap.val(); if(v && v.data){ const el = document.getElementById('siteLogo'); if(el) el.src = v.data; }}).catch(()=>{});
+  </script>
+
+<footer style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; text-align: center; padding: 15px 20px; margin-top: 30px; border-top: 3px solid #667eea;">
+    <div style="max-width: 900px; margin: 0 auto;">
+        <p style="margin: 5px 0; font-size: 0.95rem; font-weight: 600;">جميع الحقوق محفوظة © 2026</p>
+        <p style="margin: 5px 0; font-size: 0.9rem; opacity: 0.9;">mazenalgarne</p>
+    </div>
+</footer>
+
+</body>
+</html>

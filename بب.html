@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متجر مازن - العرض العام</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <img id="siteLogo" class="logo" src=";utf8, <svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect fill='%232c3e50' width='100%25' height='100%25'/><text x='50%25' y='50%25' font-size='22' fill='%23ffffff' dominant-baseline='middle' text-anchor='middle'>M</text></svg>" alt="logo">
+        <h1 class="header-title"> منافذ للاتصالات </h1>
+        <button id="menu-toggle" class="menu-toggle" aria-label="فتح القائمة">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <nav class="main-nav" id="main-nav" aria-label="أقسام الموقع">
+            <a href="#">الرئيسية</a>
+            <a href="/help.html">التعليمات والدعم</a>
+            <a href="#">العروض</a>
+            <a href="https://mazen-bot.github.io/manafed-report-super/">التقارير</a>
+        </nav>
+    </div>
+</header>
+<script>
+    const menuToggle = document.getElementById('menu-toggle');
+    const mainNav = document.getElementById('main-nav');
+    menuToggle.addEventListener('click', () => {
+        mainNav.classList.toggle('active');
+        menuToggle.classList.toggle('active');
+    });
+    mainNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            mainNav.classList.remove('active');
+            menuToggle.classList.remove('active');
+        });
+    });
+    
+    // وظيفة النسخ على السعر عند الضغط على price-item كامل
+    document.addEventListener('click', function(e) {
+        const priceItem = e.target.closest('.price-item');
+        if (priceItem) {
+            const priceValueElement = priceItem.querySelector('.price-value');
+            if (priceValueElement) {
+                const priceText = priceValueElement.innerText.replace('ريال', '').trim();
+                
+                navigator.clipboard.writeText(priceText).then(() => {
+                    const originalText = priceValueElement.innerHTML;
+                    priceValueElement.innerHTML = '✓ تم النسخ!';
+                    priceValueElement.style.color = '#4ade80';
+                    priceItem.style.background = 'rgba(74, 222, 128, 0.1)';
+                    
+                    setTimeout(() => {
+                        priceValueElement.innerHTML = originalText;
+                        priceValueElement.style.color = '';
+                        priceItem.style.background = '';
+                    }, 1500);
+                }).catch(err => console.error('خطأ في النسخ:', err));
+            }
+        }
+    });
+</script>
+
+<div id="hero-slider">
+    <h2 id="slider-text">تحميل العروض...</h2>
+</div>
+
+<div class="container">
+    <h3 style="margin-bottom: 30px;">  الإجـــهزة</h3>
+    <div class="grid" id="products-view"></div>
+</div>
+
+<div class="container" style="margin-top:50px; padding:30px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:12px; color:white;">
+    <h2 style="text-align:center; margin-bottom:30px; color:white;">💰 حاسبة التمويل والتقسيط</h2>
+    <p style="text-align:center; margin-bottom:20px; opacity:0.9;">احسب أقساطك الشهرية بسهولة - النسبة السنوية 21%</p>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:30px;">
+        <div>
+            <label style="display:block; font-weight:600; margin-bottom:8px;">سعر المنتج (ريال)</label>
+            <input type="number" id="financePrice" placeholder="أدخل سعر المنتج" min="0" step="100" style="width:100%; padding:12px; border:none; border-radius:8px; font-size:16px; box-sizing:border-box;">
+        </div>
+        <div>
+            <label style="display:block; font-weight:600; margin-bottom:8px;">مدة التقسيط (شهر)</label>
+            <select id="financePeriod" style="width:100%; padding:12px; border:none; border-radius:8px; font-size:16px; box-sizing:border-box;">
+                <option value="">اختر مدة التقسيط</option>
+                <option value="6">6 شهور</option>
+                <option value="12">12 شهر</option>
+                <option value="18">18 شهر</option>
+                <option value="24">24 شهر</option>
+                <option value="30">30 شهر</option>
+                <option value="36">36 شهر</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="financeResults" style="display:none; background:rgba(255,255,255,0.1); padding:25px; border-radius:12px; border:2px solid rgba(255,255,255,0.2);">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
+            <div style="background:rgba(255,255,255,0.2); padding:15px; border-radius:8px;">
+                <p style="margin:0; opacity:0.8; font-size:0.9rem;">المبلغ الأساسي</p>
+                <h3 style="margin:5px 0 0 0; font-size:1.5rem;" id="resultPrice">0</h3>
+            </div>
+            <div style="background:rgba(255,255,255,0.2); padding:15px; border-radius:8px;">
+                <p style="margin:0; opacity:0.8; font-size:0.9rem;">إجمالي الفوائد</p>
+                <h3 style="margin:5px 0 0 0; font-size:1.5rem;" id="resultFees">0</h3>
+            </div>
+            <div style="background:rgba(255,255,255,0.2); padding:15px; border-radius:8px;">
+                <p style="margin:0; opacity:0.8; font-size:0.9rem;">الإجمالي المستحق</p>
+                <h3 style="margin:5px 0 0 0; font-size:1.5rem;" id="resultTotal">0</h3>
+            </div>
+            <div style="background:#fff; padding:15px; border-radius:8px; color:#667eea;">
+                <p style="margin:0; opacity:0.8; font-size:0.9rem;">القسط الشهري</p>
+                <h3 style="margin:5px 0 0 0; font-size:1.8rem; font-weight:bold;" id="resultMonthly">0</h3>
+            </div>
+        </div>
+        
+        <div style="background:rgba(255,255,255,0.1); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);">
+            <p style="margin:0 0 10px 0; font-size:0.9rem; opacity:0.8;">📋 جدول التفاصيل:</p>
+            <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.3);">
+                        <th style="padding:8px; text-align:right;">البيان</th>
+                        <th style="padding:8px; text-align:right;">القيمة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                        <td style="padding:8px; text-align:right;">النسبة السنوية للفائدة</td>
+                        <td style="padding:8px; text-align:right;">21% سنوياً</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                        <td style="padding:8px; text-align:right;">النسبة الشهرية</td>
+                        <td style="padding:8px; text-align:right;">1.75% شهرياً</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                        <td style="padding:8px; text-align:right;">عدد الأقساط</td>
+                        <td style="padding:8px; text-align:right;" id="resultMonths">0 قسط</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px; text-align:right;">المبلغ المكتسب (الفوائد)</td>
+                        <td style="padding:8px; text-align:right;" id="resultFinal">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="financeMessage" style="text-align:center; padding:20px; opacity:0.9;">
+        👆 أدخل السعر واختر المدة لحساب أقساطك الشهرية
+    </div>
+</div>
+
+<script>
+    // ========== حاسبة التمويل ==========
+    const financePriceInput = document.getElementById('financePrice');
+    const financePeriodSelect = document.getElementById('financePeriod');
+    const financeResults = document.getElementById('financeResults');
+    const financeMessage = document.getElementById('financeMessage');
+
+    function calculateFinance() {
+        const price = parseFloat(financePriceInput.value) || 0;
+        const period = parseInt(financePeriodSelect.value) || 0;
+
+        if (!price || !period) {
+            financeResults.style.display = 'none';
+            financeMessage.style.display = 'block';
+            return;
+        }
+
+        // النسبة السنوية 21%
+        const annualRate = 0.21;
+        const monthlyRate = annualRate / 12; // 1.75% شهرياً
+        const monthlyRateDecimal = monthlyRate;
+
+        // صيغة حساب القسط الشهري:
+        // M = P × [r(1+r)^n] / [(1+r)^n - 1]
+        const numerator = monthlyRateDecimal * Math.pow(1 + monthlyRateDecimal, period);
+        const denominator = Math.pow(1 + monthlyRateDecimal, period) - 1;
+        const monthlyPayment = price * (numerator / denominator);
+
+        // الحسابات الإجمالية
+        const totalPaid = monthlyPayment * period;
+        const totalFees = totalPaid - price;
+
+        // عرض النتائج
+        document.getElementById('resultPrice').innerText = price.toFixed(0) + ' ريال';
+        document.getElementById('resultFees').innerText = totalFees.toFixed(0) + ' ريال';
+        document.getElementById('resultTotal').innerText = totalPaid.toFixed(0) + ' ريال';
+        document.getElementById('resultMonthly').innerText = monthlyPayment.toFixed(0) + ' ريال';
+        document.getElementById('resultMonths').innerText = period + ' قسط';
+        document.getElementById('resultFinal').innerText = totalFees.toFixed(0) + ' ريال';
+
+        financeResults.style.display = 'block';
+        financeMessage.style.display = 'none';
+    }
+
+    // ربط أحداث الإدخال
+    if (financePriceInput) financePriceInput.addEventListener('input', calculateFinance);
+    if (financePeriodSelect) financePeriodSelect.addEventListener('change', calculateFinance);
+</script>
+
+<script>
+    // بيانات Firebase الخاصة بك
+ const firebaseConfig = {
+        apiKey: "AIzaSyDdLB3KHZVbNw3O9QrKJzBw2pL_pFn8Iso",
+        databaseURL: "https://mazen-2ba04-default-rtdb.firebaseio.com",
+        projectId: "mazen-2ba04"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // جلب بيانات السلايدر
+    // سلايدر متعدد الصور: نحمل إعداد السلايدر ثم قائمة الصور ونشغّل التناوب
+    let sliderImages = [];
+    let sliderIndex = 0;
+    let sliderInterval = null;
+
+    function applyHeroImage(imgUrl) {
+        const el = document.getElementById('hero-slider');
+        if(!el) return;
+        // create a layered element to fade between images and animate Ken Burns
+        const layer = document.createElement('div');
+        layer.className = 'hero-img-layer';
+        layer.style.backgroundImage = `linear-gradient(rgba(0,0,0,0), rgba(50,0,0,0.3)), url('${imgUrl}')`;
+        // start from no opacity and neutral scale, then animate to a slightly zoomed-in state
+        layer.style.opacity = '0';
+        layer.style.transform = 'scale(1) translateY(0)';
+        layer.style.willChange = 'opacity, transform';
+        el.appendChild(layer);
+        // trigger fade-in + slow zoom (Ken Burns)
+        requestAnimationFrame(() => {
+            layer.style.opacity = '1';
+            // slight zoom and upward motion over the slide duration
+            layer.style.transform = 'scale(1.06) translateY(-2%)';
+        });
+        // remove older layers shortly after new one is visible, keep the newest for the zoom duration
+        setTimeout(() => {
+            const children = Array.from(el.querySelectorAll('.hero-img-layer'));
+            for(let i = 0; i < children.length - 1; i++) {
+                children[i].remove();
+            }
+        }, 1400);
+    }
+
+    function startSliderCycling() {
+        // stop previous
+        if(sliderInterval) { clearInterval(sliderInterval); sliderInterval = null; }
+        if(!sliderImages || !sliderImages.length) return;
+        // immediately apply current index
+        sliderIndex = 0;
+        applyHeroImage(sliderImages[sliderIndex]);
+        sliderInterval = setInterval(() => {
+            sliderIndex = (sliderIndex + 1) % sliderImages.length;
+            applyHeroImage(sliderImages[sliderIndex]);
+        }, 10000); // كل 10 ثواني
+    }
+
+    // مراقبة إعداد السلايدر (العنوان أو الصورة المفردة)
+    db.ref('homepage/slider').once('value').then((snap) => {
+        const data = snap.val();
+        if(data) {
+            const txtEl = document.getElementById('slider-text');
+            if(txtEl && data.title) txtEl.innerText = data.title;
+            // إذا لم توجد قائمة صور، نستخدم الصورة المفردة من هذا العقد
+            if(!sliderImages.length && data.img) applyHeroImage(data.img);
+        }
+    });
+
+    // تحميل قائمة صور السلايدر (في حالة وجودها) ومراقبتها لتحديث العرض فوراً
+    db.ref('homepage/slider/images').on('value', (snap) => {
+        const val = snap.val();
+        sliderImages = [];
+        if(val) {
+            // حفظ الصور بالترتيب الذي في DB (push keys) - نستخدم الترتيب الافتراضي
+            Object.keys(val).forEach(k => { if(val[k] && val[k].data) sliderImages.push(val[k].data); });
+        }
+        if(sliderImages.length) startSliderCycling();
+        else {
+            // إيقاف التناوب إذا لم توجد صور
+            if(sliderInterval) { clearInterval(sliderInterval); sliderInterval = null; }
+        }
+    });
+
+    // جلب وعرض المنتجات للزبائن
+ db.ref('homepage/products').once('value').then((snap) => {
+    const grid = document.getElementById('products-view');
+    if (!grid) return;
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement('div');
+    snap.forEach((child) => {
+        const p = child.val();
+        const productId = child.key;
+        
+        // Default image
+        let currentImage = p.img;
+        let currentPrice = p.price || 0;
+        let currentPriceWholesale = p.priceWholesale || 0;
+        let currentPriceOffer = p.priceOffer || 0;
+        let currentColorStorageOptions = [];
+
+        // Build colors options if available
+        let colorsHtml = '';
+        if (p.colors && Array.isArray(p.colors) && p.colors.length > 0) {
+            colorsHtml = '<div class="color-options" style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">';
+            p.colors.forEach((color, idx) => {
+                if (idx === 0) {
+                    currentImage = color.image || p.img;
+                    currentPrice = color.price || p.price || 0;
+                    currentPriceWholesale = color.priceWholesale || p.priceWholesale || 0;
+                    currentPriceOffer = color.priceOffer || p.priceOffer || 0;
+                    currentColorStorageOptions = Array.isArray(color.storageOptions) ? color.storageOptions : [];
+                }
+                const storageEncoded = encodeURIComponent(JSON.stringify(Array.isArray(color.storageOptions) ? color.storageOptions : []));
+                colorsHtml += `
+                    <label class="color-option" style="cursor:pointer; position:relative;" title="${color.name}">
+                        <input type="radio" name="color-${productId}" ${idx===0? 'checked': ''} 
+                               data-color-image="${color.image || p.img}" 
+                               data-color-price="${color.price || p.price || 0}" 
+                               data-color-price-wholesale="${color.priceWholesale || p.priceWholesale || 0}" 
+                               data-color-price-offer="${color.priceOffer || p.priceOffer || 0}" 
+                               data-color-storage="${storageEncoded}"
+                               style="display:none;">
+                        <div style="width:35px; height:35px; background:${color.code}; border-radius:50%; border:2px solid ${idx===0? '#fff' : '#ddd'}; box-shadow:0 2px 5px rgba(0,0,0,0.2); transition:all 0.3s;"></div>
+                        <span style="position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); font-size:10px; white-space:nowrap; color:#666;">${color.name}</span>
+                    </label>
+                `;
+            });
+            colorsHtml += '</div>';
+        }
+
+        // build storage options markup (use provided options if available)
+        let storageHtml = '';
+        const sourceStorage = (currentColorStorageOptions && currentColorStorageOptions.length)
+            ? currentColorStorageOptions
+            : (p.storageOptions && Array.isArray(p.storageOptions) && p.storageOptions.length ? p.storageOptions : []);
+        if (sourceStorage.length) {
+            sourceStorage.forEach((opt, idx) => {
+                const pr = opt.price || currentPrice;
+                const pw = opt.priceWholesale || currentPriceWholesale;
+                const po = opt.priceOffer || currentPriceOffer;
+                storageHtml += `<label class="storage-option"><input type="radio" name="storage-${productId}" ${idx===0? 'checked': ''} data-price="${pr}" data-price-wholesale="${pw}" data-price-offer="${po}"><span>${opt.label}</span></label>`;
+            });
+        } else {
+            const baseOffer = Number(currentPriceOffer);
+            const opts = [
+                { label: '128GB', addPct: 0 },
+                { label: '256GB', addPct: 0.08 },
+                { label: '512GB', addPct: 0.16 }
+            ];
+            opts.forEach((opt, idx) => {
+                const po = Math.round(baseOffer * (1 + opt.addPct));
+                const pr = Math.round(Number(currentPrice) * (1 + opt.addPct)) || po;
+                const pw = Math.round(Number(currentPriceWholesale) * (1 + opt.addPct)) || pr;
+                storageHtml += `<label class="storage-option"><input type="radio" name="storage-${productId}" ${idx===0? 'checked': ''} data-price="${pr}" data-price-wholesale="${pw}" data-price-offer="${po}"><span>${opt.label}</span></label>`;
+            });
+        }
+
+        tempDiv.innerHTML = `
+            <div class="card" data-product-id="${productId}">
+                <div class="card-img-container">
+                    
+                    <img class="product-image" src="${currentImage}" onerror="this.src='https://via.placeholder.com/300x220?text=No+Image'">
+                </div>
+                <div class="card-body">
+                    <h2 class="card-title">${p.name}</h2>
+                    ${colorsHtml}
+                    <div class="storage-options">
+                        ${storageHtml}
+                    </div>
+                    <div class="price-options">
+                        <div class="price-item">
+                            <span class="price-label"><a href="https://digital.quarafinance.com/?vid=e7d3d09f-498c-4ec0-bc16-fe489fde5434">🏷️🔖كوارا مورا</a></span>
+                            <span class="price-value">${currentPrice}<small class="currency-small">ريال</small></span>
+                        </div>
+                        
+                        <div class="price-item" style="border-right: 1px solid #eee; border-left: 1px solid #eee;">
+                            <span class="price-label"><a href="https://partners.tamara.co/#/login?redirect=%2Fdashboard%2Fhome">📱 تابي تمارا</a></span>
+                            <span class="price-value">${currentPriceWholesale}<small class="currency-small">ريال</small></span>
+                        </div>
+                        
+                        <div class="price-item">
+                            <span class="price-label">💵💵 كاش</span>
+                            <span class="price-value">${currentPriceOffer}<small class="currency-small">ريال</small></span>
+                        </div>
+                    </div>   
+                </div>
+            </div>`;
+        fragment.appendChild(tempDiv.firstElementChild);
+    });
+    grid.innerHTML = '';
+    grid.appendChild(fragment);
+
+    function attachStorageListeners(scope) {
+        const root = scope || document;
+        root.querySelectorAll('.storage-options').forEach((so) => {
+            const radios = so.querySelectorAll('input[type="radio"]');
+            radios.forEach((r) => {
+                r.addEventListener('change', (e) => {
+                    if (!e.target.checked) return;
+                    const card = so.closest('.card');
+                    if (!card) return;
+                    const pr = e.target.getAttribute('data-price') || '0';
+                    const pw = e.target.getAttribute('data-price-wholesale') || '0';
+                    const po = e.target.getAttribute('data-price-offer') || '0';
+                    const priceItems = card.querySelectorAll('.price-item .price-value');
+                    if (priceItems[0]) priceItems[0].innerHTML = pr + '<small class="currency-small">ريال</small>';
+                    if (priceItems[1]) priceItems[1].innerHTML = pw + '<small class="currency-small">ريال</small>';
+                    if (priceItems[2]) priceItems[2].innerHTML = po + '<small class="currency-small">ريال</small>';
+                });
+            });
+        });
+    }
+
+    function buildStorageHtmlFromList(list, productId, fallbackPrices) {
+        let html = '';
+        if(Array.isArray(list) && list.length) {
+            list.forEach((opt, idx) => {
+                const pr = opt.price || fallbackPrices.price || 0;
+                const pw = opt.priceWholesale || fallbackPrices.priceWholesale || 0;
+                const po = opt.priceOffer || fallbackPrices.priceOffer || 0;
+                html += `<label class="storage-option"><input type="radio" name="storage-${productId}" ${idx===0? 'checked': ''} data-price="${pr}" data-price-wholesale="${pw}" data-price-offer="${po}"><span>${opt.label}</span></label>`;
+            });
+        }
+        return html;
+    }
+
+    function attachColorChangeListeners() {
+        document.querySelectorAll('.color-options').forEach((co) => {
+        const radios = co.querySelectorAll('input[type="radio"]');
+        radios.forEach((r) => {
+            r.addEventListener('change', (e) => {
+                if (!e.target.checked) return;
+                const card = co.closest('.card');
+                if (!card) return;
+
+                // Update image
+                const img = card.querySelector('.product-image');
+                const newImg = e.target.getAttribute('data-color-image');
+                if (img && newImg) img.src = newImg;
+
+                // Update border color for selected color
+                co.querySelectorAll('label div').forEach(div => {
+                    div.style.border = '2px solid #ddd';
+                });
+                const selectedLabel = e.target.closest('label');
+                if (selectedLabel) {
+                    const colorDiv = selectedLabel.querySelector('div');
+                    if (colorDiv) colorDiv.style.border = '2px solid #fff';
+                }
+
+                // Base prices for this color
+                const colorPrice = e.target.getAttribute('data-color-price') || '0';
+                const colorPriceWholesale = e.target.getAttribute('data-color-price-wholesale') || '0';
+                const colorPriceOffer = e.target.getAttribute('data-color-price-offer') || '0';
+
+                // Rebuild storage options for this color
+                const storageOptionsEl = card.querySelector('.storage-options');
+                const storageRaw = e.target.getAttribute('data-color-storage') || '[]';
+                let storageList = [];
+                try { storageList = JSON.parse(decodeURIComponent(storageRaw)); } catch(e2) { storageList = []; }
+                const newHtml = buildStorageHtmlFromList(storageList, card.getAttribute('data-product-id'), {
+                    price: Number(colorPrice),
+                    priceWholesale: Number(colorPriceWholesale),
+                    priceOffer: Number(colorPriceOffer)
+                });
+                if (storageOptionsEl) {
+                    storageOptionsEl.innerHTML = newHtml || storageOptionsEl.innerHTML;
+                    attachStorageListeners(card);
+                }
+
+                // Apply first storage price if exists, else base color price
+                const firstRadio = storageOptionsEl ? storageOptionsEl.querySelector('input[type="radio"]') : null;
+                if (firstRadio) {
+                    const pr = firstRadio.getAttribute('data-price') || colorPrice;
+                    const pw = firstRadio.getAttribute('data-price-wholesale') || colorPriceWholesale;
+                    const po = firstRadio.getAttribute('data-price-offer') || colorPriceOffer;
+                    const priceItems = card.querySelectorAll('.price-item .price-value');
+                    if (priceItems[0]) priceItems[0].innerHTML = pr + '<small class="currency-small">ريال</small>';
+                    if (priceItems[1]) priceItems[1].innerHTML = pw + '<small class="currency-small">ريال</small>';
+                    if (priceItems[2]) priceItems[2].innerHTML = po + '<small class="currency-small">ريال</small>';
+                }
+            });
+        });
+    });}
+
+    // Attach listeners to storage option radios to update prices
+    attachStorageListeners();
+    
+    // Attach color change listeners
+    attachColorChangeListeners();
+});
+
+    // جلب لوجو الموقع من Firebase وعرضه في الهيدر
+    db.ref('homepage/logo').once('value').then((snap) => {
+        const v = snap.val();
+        if(v && v.data){
+            const el = document.getElementById('siteLogo');
+            if(el) el.src = v.data;
+        }
+    }).catch(err => console.error('خطأ في تحميل اللوجو:', err));
+</script>
+
+<footer style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; text-align: center; padding: 30px 20px; margin-top: 50px; border-top: 3px solid #667eea;">
+    <div class="container" style="max-width: 100%;">
+        <p style="margin: 10px 0; font-size: 16px; font-weight: 600;">جميع الحقوق محفوظة © 2026</p>
+        <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">mazenalgarne</p>
+       
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="متجر منافذ للاتصالات - أفضل العروض على الهواتف الذكية والأجهزة الإلكترونية">
+    <meta name="keywords" content="هواتف، أجهزة، تمويل، تقسيط، كوارا، تابي، تمارا">
+    <title>متجر منافذ - العرض العام</title>
+    
+    <!-- الخطوط -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- الأنماط -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- الهيدر -->
+<header>
+    <div class="header-inner">
+        <img id="siteLogo" 
+             class="logo" 
+             src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect fill='%232c3e50' width='100%25' height='100%25'/><text x='50%25' y='50%25' font-size='22' fill='%23ffffff' dominant-baseline='middle' text-anchor='middle'>M</text></svg>" 
+             alt="شعار منافذ للاتصالات">
+        
+        <h1 class="header-title">منافذ للاتصالات</h1>
+        
+        <button id="menu-toggle" class="menu-toggle" aria-label="فتح القائمة">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        
+        <nav class="main-nav" id="main-nav" aria-label="أقسام الموقع">
+            <a href="index.html">الرئيسية</a>
+            <a href="help.html">التعليمات والدعم</a>
+            <a href="#products-section">الأجهزة</a>
+            <a href="https://mazen-bot.github.io/manafed-report-super/" target="_blank">التقارير</a>
+        </nav>
+    </div>
+</header>
+
+<!-- السلايدر الرئيسي -->
+<div id="hero-slider">
+    <h2 id="slider-text">تحميل العروض...</h2>
+</div>
+
+<!-- قسم المنتجات -->
+<section id="products-section" class="container">
+    <h3 style="margin-bottom: 30px; font-size: 1.8rem; text-align: center;">الأجهزة المتوفرة</h3>
+    <div class="grid" id="products-view"></div>
+</section>
+
+<!-- حاسبة التمويل -->
+<section class="container finance-calculator">
+    <h2>💰 حاسبة التمويل والتقسيط</h2>
+    <p>احسب أقساطك الشهرية بسهولة - النسبة السنوية 21%</p>
+    
+    <div class="finance-inputs">
+        <div class="finance-input-group">
+            <label for="financePrice">سعر المنتج (ريال)</label>
+            <input type="number" 
+                   id="financePrice" 
+                   placeholder="أدخل سعر المنتج" 
+                   min="0" 
+                   step="100">
+        </div>
+        
+        <div class="finance-input-group">
+            <label for="financePeriod">مدة التقسيط (شهر)</label>
+            <select id="financePeriod">
+                <option value="">اختر مدة التقسيط</option>
+                <option value="6">6 شهور</option>
+                <option value="12">12 شهر</option>
+                <option value="18">18 شهر</option>
+                <option value="24">24 شهر</option>
+                <option value="30">30 شهر</option>
+                <option value="36">36 شهر</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="financeResults" class="finance-results" style="display:none;">
+        <div class="finance-grid">
+            <div class="finance-stat">
+                <p>المبلغ الأساسي</p>
+                <h3 id="resultPrice">0</h3>
+            </div>
+            
+            <div class="finance-stat">
+                <p>إجمالي الفوائد</p>
+                <h3 id="resultFees">0</h3>
+            </div>
+            
+            <div class="finance-stat">
+                <p>الإجمالي المستحق</p>
+                <h3 id="resultTotal">0</h3>
+            </div>
+            
+            <div class="finance-stat highlight">
+                <p>القسط الشهري</p>
+                <h3 id="resultMonthly">0</h3>
+            </div>
+        </div>
+        
+        <div class="finance-details">
+            <p style="margin:0 0 10px 0; font-size:0.9rem; opacity:0.8;">📋 جدول التفاصيل:</p>
+            <table class="finance-table">
+                <thead>
+                    <tr>
+                        <th>البيان</th>
+                        <th>القيمة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>النسبة السنوية للفائدة</td>
+                        <td>21% سنوياً</td>
+                    </tr>
+                    <tr>
+                        <td>النسبة الشهرية</td>
+                        <td>1.75% شهرياً</td>
+                    </tr>
+                    <tr>
+                        <td>عدد الأقساط</td>
+                        <td id="resultMonths">0 قسط</td>
+                    </tr>
+                    <tr>
+                        <td>المبلغ المكتسب (الفوائد)</td>
+                        <td id="resultFinal">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="financeMessage" class="finance-message">
+        👆 أدخل السعر واختر المدة لحساب أقساطك الشهرية
+    </div>
+</section>
+
+<!-- الفوتر -->
+<footer>
+    <div class="container">
+        <p class="copyright">جميع الحقوق محفوظة © 2026</p>
+        <p class="brand">mazenalgarne</p>
+        
+    </div>
+</footer>
+
+<!-- السكريبتات -->
+<script src="js/config.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/slider.js"></script>
+<script src="js/products.js"></script>
+<script src="js/finance.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/logo.js"></script>
+
+</body>
+</html>

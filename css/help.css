@@ -1,0 +1,360 @@
+/* ===================================
+   أنماط صفحة المساعدة
+   =================================== */
+
+/* تجاوز بعض الأنماط من main.css */
+body {
+    background: #fffcff;
+    color: #333;
+}
+
+/* الهيدر الخاص بصفحة المساعدة */
+header {
+    background: rgb(77, 14, 99);
+    padding: 12px 20px;
+}
+
+.header-title {
+    font-size: 1.3rem;
+}
+
+/* ===================================
+   تخطيط صفحة المساعدة
+   =================================== */
+.help-layout {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.main {
+    width: 100%;
+}
+
+/* إخفاء العناصر غير المطلوبة */
+.side,
+.tabs,
+#add-form {
+    display: none;
+}
+
+/* ===================================
+   البطاقات والأقسام
+   =================================== */
+.card {
+    background: #ffffff;
+    padding: 0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    border: 1px solid #e5e5e5;
+}
+
+.card:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+#tutorials-section {
+    padding: 0;
+}
+
+/* إخفاء عنوان القسم الأول */
+#tutorials-section > div:first-child {
+    display: none;
+}
+
+/* ===================================
+   البحث
+   =================================== */
+.search-box {
+    width: 100%;
+    padding: 15px 20px;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    margin-bottom: 25px;
+    transition: all 0.3s;
+}
+
+.search-box:focus {
+    outline: none;
+    border-color: rgb(77, 14, 99);
+    box-shadow: 0 0 0 3px rgba(77, 14, 99, 0.1);
+}
+
+/* ===================================
+   قائمة الدروس - نمط FAQ
+   =================================== */
+#tutorialsList {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.faq-item {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 18px 0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+}
+
+.faq-item:hover {
+    background-color: #f8f9fa;
+    padding-right: 10px;
+    padding-left: 10px;
+    margin-right: -10px;
+    margin-left: -10px;
+}
+
+.faq-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.faq-question {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+}
+
+.faq-icon {
+    font-size: 18px;
+    color: #666;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.faq-item.expanded .faq-icon {
+    transform: rotate(180deg);
+}
+
+/* ===================================
+   تفاصيل الدرس
+   =================================== */
+.tutorial-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.4s ease;
+    padding: 0;
+}
+
+.faq-item.expanded .tutorial-details {
+    max-height: 3000px;
+    padding-top: 15px;
+}
+
+.tutorial-details p {
+    color: #666;
+    line-height: 1.7;
+    margin: 10px 0;
+}
+
+.tutorial-details img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 15px 0;
+    display: block;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.tutorial-details h1,
+.tutorial-details h2,
+.tutorial-details h3 {
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.tutorial-details ul,
+.tutorial-details ol {
+    padding-right: 20px;
+    line-height: 1.7;
+}
+
+.tutorial-details code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.tutorial-details pre {
+    background: #f4f4f4;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    direction: ltr;
+}
+
+.tutorial-details blockquote {
+    border-right: 4px solid rgb(77, 14, 99);
+    padding: 10px 20px;
+    margin: 15px 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* ===================================
+   الأزرار
+   =================================== */
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background: rgb(77, 14, 99);
+    color: #fff;
+    font-family: inherit;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    background: rgb(57, 10, 79);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-accent {
+    background: rgb(77, 14, 99);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+/* ===================================
+   الحالات الفارغة
+   =================================== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state svg {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+/* ===================================
+   Media Queries للاستجابة
+   =================================== */
+
+@media screen and (max-width: 768px) {
+    .help-layout {
+        margin: 20px auto;
+    }
+    
+    .faq-question {
+        font-size: 0.95rem;
+    }
+    
+    .faq-item {
+        padding: 15px 0;
+    }
+    
+    .search-box {
+        padding: 12px 15px;
+        font-size: 0.95rem;
+    }
+    
+    .tutorial-details img {
+        max-width: 100%;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .help-layout {
+        padding: 0 15px;
+    }
+    
+    .faq-question {
+        font-size: 0.9rem;
+    }
+    
+    .faq-icon {
+        font-size: 16px;
+    }
+    
+    .tutorial-details {
+        font-size: 0.9rem;
+    }
+    
+    .tutorial-details h1 {
+        font-size: 1.5rem;
+    }
+    
+    .tutorial-details h2 {
+        font-size: 1.3rem;
+    }
+    
+    .tutorial-details h3 {
+        font-size: 1.1rem;
+    }
+}
+
+/* ===================================
+   تحسينات إضافية
+   =================================== */
+
+/* تأثير التركيز على الدروس */
+.faq-item:focus-within {
+    outline: 2px solid rgb(77, 14, 99);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* تحسين القراءة */
+.tutorial-details {
+    text-align: justify;
+}
+
+/* Smooth scrolling للروابط الداخلية */
+html {
+    scroll-behavior: smooth;
+}
+
+/* تحسين عرض الجداول في المحتوى */
+.tutorial-details table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.tutorial-details table th,
+.tutorial-details table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: right;
+}
+
+.tutorial-details table th {
+    background: #f4f4f4;
+    font-weight: 600;
+}
+
+/* تحسين الروابط */
+.tutorial-details a {
+    color: rgb(77, 14, 99);
+    text-decoration: underline;
+}
+
+.tutorial-details a:hover {
+    color: rgb(57, 10, 79);
+}
