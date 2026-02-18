@@ -2,6 +2,11 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <!-- favicon and web app manifest -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <meta name="theme-color" content="#2c3e50">
     <title>لوحة تحكم مازن - الإدارة الكاملة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -272,11 +277,7 @@
         <div id="colorsList" style="margin-top:15px;"></div>
     </div>
 
-    <div class="input-group" style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px; display:none;">
-        <input type="number" id="pPrice" placeholder="سعر كوارا ومورا">
-        <input type="number" id="pPriceWholesale" placeholder="سعر تابي وتمارا">
-        <input type="number" id="pPriceOffer" placeholder="سعر الكاش">
-    </div>
+    <!-- الأسعار أصبحت منسوبة فقط إلى خيارات الألوان أو السعات (لا توجد أسعار عامة للمنتج) -->
     <button onclick="saveProduct()" id="saveBtn" class="btn-main" style="background: var(--success);">حفظ المنتج</button>
     <button onclick="resetForm()" id="cancelBtn" style="display:none; background:#6c757d; color:white; width:100%; margin-top:5px;">إلغاء التعديل</button>
 
@@ -578,19 +579,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         showAdminControls(true);
 
-        // Auto-fill prices when cash price (سعر الكاش) is entered:
-        const cashInput = document.getElementById('pPriceOffer');
-        const quaraInput = document.getElementById('pPrice'); // كوارا مورا
-        const tamaraInput = document.getElementById('pPriceWholesale'); // تابي تمارا
-        if(cashInput) {
-            cashInput.addEventListener('input', () => {
-                const cash = parseFloat(cashInput.value) || 0;
-                const quara = Math.round(cash + 200); // كوارا مورا = سعر الكاش + 200
-                const tamara = Math.round(cash * 1.07); // تابي تمارا = سعر الكاش + 7%
-                if(quaraInput) quaraInput.value = quara;
-                if(tamaraInput) tamaraInput.value = tamara;
-            });
-        }
+        // ملاحظة: لم يعد هناك حقل سعر عام للمنتج. الأسعار تأتي الآن من خيارات الألوان أو السعات.
     });
 
     // 1. تحديث السلايدر
@@ -660,7 +649,7 @@
     window.calculateColorPrices = function() {
         const cashPrice = Number(document.getElementById('colorPriceOffer').value || 0);
         if (cashPrice > 0) {
-            const kowaraPrice = Math.round(cashPrice + 200);
+            const kowaraPrice = Math.round(cashPrice + 400);
             const tabiPrice = Math.round(cashPrice * 1.07);
             document.getElementById('colorPrice').value = kowaraPrice;
             document.getElementById('colorPriceWholesale').value = tabiPrice;
@@ -670,7 +659,7 @@
     window.calculateColorStoragePrices = function() {
         const cashPrice = Number(document.getElementById('colorStoragePriceOffer').value || 0);
         if (cashPrice > 0) {
-            const kowaraPrice = Math.round(cashPrice + 200);
+            const kowaraPrice = Math.round(cashPrice + 400);
             const tabiPrice = Math.round(cashPrice * 1.07);
             document.getElementById('colorStoragePrice').value = kowaraPrice;
             document.getElementById('colorStoragePriceWholesale').value = tabiPrice;
@@ -942,30 +931,17 @@
     const name = (document.getElementById('pName').value || '').trim();
     const img = (document.getElementById('pImg').value || '').trim();
     const category = (document.getElementById('pCategory').value || '').trim();
-    const price = (document.getElementById('pPrice').value || '').trim();
-    const priceWholesale = (document.getElementById('pPriceWholesale').value || '').trim();
-    const priceOffer = (document.getElementById('pPriceOffer').value || '').trim();
 
     const missing = [];
     if(!name) missing.push('اسم المنتج');
     if(!category) missing.push('التصنيف');
-    if(!price) missing.push('سعر كوارا مورا');
-    if(!priceWholesale) missing.push('سعر تابي تمارا');
-    if(!priceOffer) missing.push('سعر الكاش');
 
     if(missing.length) {
         alert('الرجاء تعبئة الحقول التالية قبل الحفظ:\n- ' + missing.join('\n- '));
         return;
     }
 
-    const productData = {
-        name,
-        img,
-        category,
-        price: Number(price),
-        priceWholesale: Number(priceWholesale),
-        priceOffer: Number(priceOffer)
-    };
+    const productData = { name, img, category };
 
     // read storage options JSON if provided
     const storageText = (document.getElementById('pStorage').value || '').trim();
@@ -982,10 +958,38 @@
 
     // Add colors if available
     if(window.currentColors && window.currentColors.length > 0) {
-        productData.colors = window.currentColors;
-        if(!productData.img && window.currentColors[0] && window.currentColors[0].image) {
-            productData.img = window.currentColors[0].image;
+        // Normalize colors: ensure numeric prices and storage options
+        productData.colors = window.currentColors.map(c => ({
+            name: c.name || '',
+            code: c.code || '#000000',
+            price: Number(c.price || 0),
+            priceWholesale: Number(c.priceWholesale || 0),
+            priceOffer: Number(c.priceOffer || 0),
+            image: c.image || '',
+            storageOptions: Array.isArray(c.storageOptions) ? c.storageOptions.map(o => ({ label: o.label, price: Number(o.price||0), priceWholesale: Number(o.priceWholesale||0), priceOffer: Number(o.priceOffer||0) })) : []
+        }));
+        if(!productData.img && productData.colors[0] && productData.colors[0].image) {
+            productData.img = productData.colors[0].image;
         }
+    }
+
+    // Validation: prices must be provided inside storage options or colors
+    function hasValidPrices(pd) {
+        if(pd.storageOptions && pd.storageOptions.length) {
+            return pd.storageOptions.every(o => isFinite(Number(o.price)) && isFinite(Number(o.priceWholesale)) && isFinite(Number(o.priceOffer)));
+        }
+        if(pd.colors && pd.colors.length) {
+            for(const c of pd.colors) {
+                if(isFinite(Number(c.price)) && isFinite(Number(c.priceWholesale)) && isFinite(Number(c.priceOffer))) return true;
+                if(c.storageOptions && c.storageOptions.length && c.storageOptions.every(o => isFinite(Number(o.price)) && isFinite(Number(o.priceWholesale)) && isFinite(Number(o.priceOffer)))) return true;
+            }
+        }
+        return false;
+    }
+
+    if(!hasValidPrices(productData)) {
+        alert('الرجاء إضافة الأسعار داخل خيارات الألوان أو داخل قائمة السعات قبل الحفظ.');
+        return;
     }
 
     if(!productData.img) {
@@ -1008,20 +1012,18 @@
     // دالة تحميل المنتج للتعديل
     function loadProductForEdit(id, encodedData) {
         try {
-            const p = JSON.parse(decodeURIComponent(encodedData));
-            editProduct(id, p.name, p.price, p.img, p.category, p.storageOptions, p.colors, p.priceWholesale, p.priceOffer);
+                const p = JSON.parse(decodeURIComponent(encodedData));
+                editProduct(id, p.name, p.img, p.category, p.storageOptions, p.colors);
         } catch(e) {
             alert('خطأ في تحميل بيانات المنتج: ' + e.message);
         }
     }
 
     // 4. تجهيز النموذج للتعديل
-    function editProduct(id, name, price, img, cat, storageOptions, colors, priceWholesale, priceOffer) {
+    function editProduct(id, name, img, cat, storageOptions, colors) {
         document.getElementById('editId').value = id;
         document.getElementById('pName').value = name;
-        document.getElementById('pPrice').value = price;
-        document.getElementById('pPriceWholesale').value = priceWholesale || '';
-        document.getElementById('pPriceOffer').value = priceOffer || '';
+        // الأسعار تُدار ضمن الألوان أو السعات — لا نعيّن سعرًا عامًّا هنا
         document.getElementById('pImg').value = img;
         document.getElementById('pCategory').value = cat;
         // populate storage JSON if available
@@ -1068,9 +1070,7 @@
         document.getElementById('pImg').value = '';
         const cat = document.getElementById('pCategory');
         if(cat) cat.value = 'عام';
-        document.getElementById('pPrice').value = '';
-        document.getElementById('pPriceWholesale').value = '';
-        document.getElementById('pPriceOffer').value = '';
+        // لا توجد حقول أسعار عامة؛ الأسعار محفوظة داخل الألوان أو السعات
         document.getElementById('pStorage').value = '';
         window.currentStorageOptions = [];
         renderStorageList();

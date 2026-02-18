@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 100 100'>
+  <defs>
+    <linearGradient id='g' x1='0' x2='1'>
+      <stop offset='0%' stop-color='#2c3e50'/>
+      <stop offset='100%' stop-color='#6f42c1'/>
+    </linearGradient>
+  </defs>
+  <g transform='translate(50,50)'>
+    <g>
+      <circle r='30' fill='none' stroke='url(#g)' stroke-width='8' stroke-linecap='round' stroke-dasharray='47 150' stroke-dashoffset='0'>
+        <animateTransform attributeName='transform' type='rotate' from='0' to='360' dur='1s' repeatCount='indefinite'/>
+      </circle>
+    </g>
+  </g>
+</svg>

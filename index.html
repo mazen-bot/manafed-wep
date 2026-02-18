@@ -19,6 +19,11 @@
 </head>
 <body>
 
+    <!-- favicon and web app manifest -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <meta name="theme-color" content="#2c3e50">
 <!-- الهيدر -->
 <header>
     <div class="header-inner">
@@ -52,12 +57,17 @@
 <!-- قسم المنتجات -->
 <section id="products-section" class="container">
     <h3 style="margin-bottom: 30px; font-size: 1.8rem; text-align: center;">الأجهزة المتوفرة</h3>
-    <div class="grid" id="products-view"></div>
+    <div id="products-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <div id="productsLoader" style="display:flex;align-items:center;justify-content:center;padding:20px;">
+            <img src="logowi copy.gif" alt="جاري التحميل" style="width:500px;height:100px;">
+        </div>
+        <div id="products-view" class="grid" style="width:100%;"></div>
+    </div>
 </section>
 
 <!-- حاسبة التمويل -->
 <section class="container finance-calculator">
-    <h2>💰 حاسبة التمويل والتقسيط</h2>
+    <h2>💰  (تقريبي)حاسبة التمويل والتقسيط </h2>
     <p>احسب أقساطك الشهرية بسهولة - النسبة السنوية 21%</p>
     
     <div class="finance-inputs">
@@ -80,6 +90,7 @@
                 <option value="24">24 شهر</option>
                 <option value="30">30 شهر</option>
                 <option value="36">36 شهر</option>
+                <option value="42">42 شهر</option>
             </select>
         </div>
     </div>

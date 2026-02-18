@@ -23,7 +23,7 @@
         }
         
         // النسبة السنوية 21%
-        const annualRate = 0.21;
+        const annualRate = 0.36;
         const monthlyRate = annualRate / 12; // 1.75% شهرياً
         
         // صيغة حساب القسط الشهري:

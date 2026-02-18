@@ -148,9 +148,15 @@
      * تحميل وعرض المنتجات
      */
     function loadProducts() {
+        const loader = document.getElementById('productsLoader');
+        const grid = document.getElementById('products-view');
+        if (loader) loader.style.display = 'flex';
+        if (!grid) {
+            if (loader) loader.style.display = 'none';
+            return;
+        }
+
         db.ref('homepage/products').once('value').then((snap) => {
-            const grid = document.getElementById('products-view');
-            if (!grid) return;
             
             const fragment = document.createDocumentFragment();
             const tempDiv = document.createElement('div');
@@ -299,12 +305,16 @@
             
             grid.innerHTML = '';
             grid.appendChild(fragment);
-            
+
             // ربط مستمعي الأحداث
             attachStorageListeners();
             attachColorChangeListeners();
-            
-        }).catch(err => console.error('خطأ في تحميل المنتجات:', err));
+
+            if (loader) loader.style.display = 'none';
+        }).catch(err => {
+            console.error('خطأ في تحميل المنتجات:', err);
+            if (loader) loader.style.display = 'none';
+        });
     }
     
     // تحميل المنتجات عند تحميل الصفحة
