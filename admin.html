@@ -10,6 +10,9 @@
     <title>لوحة تحكم مازن - الإدارة الكاملة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     
     <style>
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --dark: #2c3e50; }
@@ -87,6 +90,13 @@
         
         h1 { margin: 0 0 20px 0; color: var(--dark); }
         
+        /* Quill Rich Text Editor Styling */
+        .ql-toolbar { background: #f5f5f5; border: 1px solid #ddd !important; border-radius: 6px 6px 0 0; direction: rtl; padding: 10px; }
+        .ql-toolbar.ql-snow { background: linear-gradient(180deg, #f9f9f9 0%, #f5f5f5 100%); }
+        .ql-container { border: 1px solid #ddd !important; border-radius: 0 0 6px 6px; direction: rtl; }
+        .ql-editor { min-height: 250px; padding: 12px; line-height: 1.6; font-size: 16px; }
+        .ql-editor p { margin: 10px 0; }
+        
         @media (max-width: 768px) {
             .sidebar { width: 100%; position: static; height: auto; }
             .admin-wrapper { flex-direction: column; }
@@ -163,21 +173,38 @@
     <div class="card" id="tutorials">
         <h2 id="tutorialFormTitle">📚 إدارة الدروس</h2>
         <p style="font-size:0.95rem;color:#666;">أضف دروساً ليتم عرضها في مركز التعليمات. الإدخال متوافق مع Markdown.</p>
-        <div class="input-group" style="flex-direction:column;">
+        <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-top:15px;">
             <input type="hidden" id="editTutorialId">
-            <input id="adminTTitle" placeholder="عنوان الدرس">
-            <div style="display:flex;gap:8px;margin-top:8px"></div>
-            <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
-                <input type="file" id="adminTThumb" accept="image/*" onchange="handleTutorialThumb(event)">
-                <img id="tutorialThumbPreview" src="" alt="معاينة الصورة" style="height:60px;border-radius:6px;display:none;">
+            
+            <!-- عنوان الدرس -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;">عنوان الدرس</label>
+                <input id="adminTTitle" placeholder="أدخل عنوان الدرس" style="width:100%;">
             </div>
-            <textarea id="adminTContent" rows="6" placeholder="المحتوى (Markdown)"></textarea>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-                <button class="btn-main" onclick="adminAddTutorial()" style="background:var(--primary);">أضف درس</button>
-                <button class="btn-main" onclick="adminClearTutorialForm()" style="background:#6c757d;">مسح</button>
+            
+            <!-- صورة الدرس -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;">صورة الدرس</label>
+                <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <input type="file" id="adminTThumb" accept="image/*" onchange="handleTutorialThumb(event)" style="flex:1;">
+                    <img id="tutorialThumbPreview" src="" alt="معاينة الصورة" style="height:60px;width:60px;border-radius:6px;display:none;object-fit:cover;">
+                </div>
+            </div>
+            
+            <!-- محتوى الدرس (محرر غني) -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;">محتوى الدرس (محرر غني)</label>
+                <div id="adminTContentEditor" style="background:#fff;border:1px solid #ddd;border-radius:6px;min-height:250px;margin-bottom:8px;"></div>
+            </div>
+            
+            <!-- أزرار الحفظ والمسح -->
+            <div style="display:flex;gap:8px;">
+                <button class="btn-main" onclick="adminAddTutorial()" style="background:var(--primary);flex:1;">حفظ الدرس</button>
+                <button class="btn-main" onclick="adminClearTutorialForm()" style="background:#6c757d;flex:1;">مسح النموذج</button>
             </div>
         </div>
 
+        <!-- قائمة الدروس الحالية -->
         <div style="margin-top:30px; border-top:2px solid #eee; padding-top:20px;">
             <h3 style="margin:0 0 15px 0;">📋 الدروس الحالية</h3>
             <div id="adminTutorialsList"></div>
@@ -515,6 +542,11 @@
         const targetCard = document.getElementById(sectionId);
         if(targetCard) {
             targetCard.classList.add('active');
+            
+            // تهيئة محرر Quill عند فتح قسم الدروس
+            if(sectionId === 'tutorials') {
+                setTimeout(() => initTutorialEditor(), 100);
+            }
         }
         
         // تنشيط عنصر القائمة الجانبية المناسب
@@ -1224,6 +1256,8 @@
 
     // معالج رفع صورة الدرس المصغرة
     let tutorialThumbDataURL = null;
+    let tutorialQuillEditor = null;
+    
     function handleTutorialThumb(e) {
         const file = e.target.files[0];
         if(!file) return;
@@ -1238,11 +1272,38 @@
         reader.readAsDataURL(file);
     }
 
+    // تهيئة محرر Quill للدروس
+    function initTutorialEditor() {
+        if(!tutorialQuillEditor) {
+            const container = document.getElementById('adminTContentEditor');
+            if(!container) return; // انتظر حتى يصبح العنصر موجوداً
+            
+            try {
+                tutorialQuillEditor = new Quill('#adminTContentEditor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            ['blockquote', 'code-block'],
+                            [{ 'header': 1 }, { 'header': 2 }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'align': [] }],
+                            ['link', 'image'],
+                            ['clean']
+                        ]
+                    },
+                    placeholder: 'أدخل محتوى الدرس...'
+                });
+            } catch(e) { console.error('خطأ في تهيئة Quill:', e); }
+        }
+    }
+
     // إضافة/تعديل دروس من لوحة التحكم (بدون قيود)
     function adminAddTutorial(){
         const editId = document.getElementById('editTutorialId').value;
         const title = (document.getElementById('adminTTitle').value || '').trim();
-        const content = (document.getElementById('adminTContent').value || '').trim();
+        const content = tutorialQuillEditor ? tutorialQuillEditor.root.innerHTML : '';
         if(!title){ alert('ادخل عنوان الدرس'); return; }
         
         const data = { title, content };
@@ -1261,7 +1322,7 @@
         document.getElementById('editTutorialId').value = '';
         const t = document.getElementById('adminTTitle'); if(t) t.value='';
         const th = document.getElementById('adminTThumb'); if(th) th.value='';
-        const c = document.getElementById('adminTContent'); if(c) c.value='';
+        if(tutorialQuillEditor) tutorialQuillEditor.setContents([]);
         const preview = document.getElementById('tutorialThumbPreview'); if(preview) { preview.src=''; preview.style.display='none'; }
         const formTitle = document.getElementById('tutorialFormTitle'); if(formTitle) formTitle.innerText = '📚 إدارة الدروس';
         tutorialThumbDataURL = null;
@@ -1278,16 +1339,21 @@
             Object.keys(val).reverse().forEach(key => {
                 const t = val[key];
                 const item = document.createElement('div');
-                item.className = 'product-item';
+                item.style.cssText = 'background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;border-right:5px solid #007bff;box-shadow:0 2px 4px rgba(0,0,0,0.05);';
+                
+                // عرض كل حقل على سطر منفصل
+                let contentPreview = (t.content || '').substring(0, 100) + (t.content && t.content.length > 100 ? '...' : '');
                 item.innerHTML = `
-                    <img src="${t.thumb || 'https://via.placeholder.com/60'}" onerror="this.src='https://via.placeholder.com/60'">
-                    <div class="product-info">
-                        <strong>${t.title}</strong><br>
-                        <small></small>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-edit" onclick="editTutorial('${key}', ${JSON.stringify(t).replace(/"/g, '&quot;')})">تعديل</button>
-                        <button class="btn-delete" onclick="deleteTutorial('${key}')">حذف</button>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <div style="margin-bottom:8px;"><strong>العنوان:</strong> ${t.title || 'بدون عنوان'}</div>
+                            <div style="margin-bottom:8px;"><strong>المحتوى:</strong> <span style="color:#666;font-size:0.9rem;">${contentPreview}</span></div>
+                            <div style="margin-bottom:8px;"><strong>الصورة:</strong> ${t.thumb ? '<img src="' + t.thumb + '" alt="صورة" style="max-width:120px;max-height:80px;border-radius:6px;margin-top:5px;" onerror="this.src=\'https://via.placeholder.com/120x80\'">' : '<span style="color:#999;">بدون صورة</span>'}</div>
+                        </div>
+                        <div style="display:flex;gap:5px;flex-direction:column;">
+                            <button class="btn-edit" onclick="editTutorial('${key}', ${JSON.stringify(t).replace(/"/g, '&quot;')})">تعديل</button>
+                            <button class="btn-delete" onclick="deleteTutorial('${key}')">حذف</button>
+                        </div>
                     </div>
                 `;
                 fragment.appendChild(item);
@@ -1300,7 +1366,9 @@
     function editTutorial(id, data){
         document.getElementById('editTutorialId').value = id;
         document.getElementById('adminTTitle').value = data.title || '';
-        document.getElementById('adminTContent').value = data.content || '';
+        if(tutorialQuillEditor) {
+            tutorialQuillEditor.root.innerHTML = data.content || '';
+        }
         if(data.thumb) {
             tutorialThumbDataURL = data.thumb;
             const preview = document.getElementById('tutorialThumbPreview');
@@ -1320,6 +1388,20 @@
 
     // تحميل الدروس عند فتح الصفحة
     loadAdminTutorials();
+    
+    // تهيئة محرر Quill بعد تحميل الـ DOM بشكل كامل
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => initTutorialEditor(), 100);
+    });
+    
+    // الاستدعاء مباشرة في حالة تحميل الملف بعد DOMContentLoaded
+    if(document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => initTutorialEditor(), 100);
+        });
+    } else {
+        setTimeout(() => initTutorialEditor(), 100);
+    }
 
     // ========== إدارة المستخدمين ==========
     async function saveUser() {

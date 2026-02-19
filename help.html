@@ -13,6 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
     body { background: #fffcff; color: #333; min-height: 100vh; display: flex; flex-direction: column; }
@@ -62,9 +63,23 @@
     .faq-item.expanded .faq-icon { transform: rotate(180deg); }
     .tutorial-details { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; padding: 0; }
     .faq-item.expanded .tutorial-details { max-height: 2000px; padding-top: 15px; }
-    .tutorial-details p { color: #666; line-height: 1.6; }
-    .tutorial-details img { max-width: 30%; height: auto; border-radius: 8px; margin: 10px 0; display: block; }
+    .tutorial-details { display: flex; gap: 20px; align-items: flex-start; flex-direction: row-reverse; }
+    .tutorial-details p { color: #666; line-height: 1.6; margin: 10px 0; }
+    .tutorial-details img { min-width: 200px; max-width: 200px; height: auto; border-radius: 8px; flex-shrink: 0; }
+    .tutorial-details > div:last-child { flex: 1; }
+    .tutorial-details h1, .tutorial-details h2, .tutorial-details h3 { color: #2c3e50; margin-top: 15px; margin-bottom: 10px; }
+    .tutorial-details ul, .tutorial-details ol { padding-right: 20px; color: #666; line-height: 1.8; }
+    .tutorial-details li { margin: 8px 0; }
+    .tutorial-details strong { color: #2c3e50; font-weight: 700; }
+    .tutorial-details em { font-style: italic; color: #555; }
+    .tutorial-details blockquote { border-right: 4px solid #007bff; padding-right: 12px; margin: 15px 0; color: #666; background: #f5f5f5; padding: 12px; border-radius: 6px; }
+    .tutorial-details code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New'; color: #d63384; }
+    .tutorial-details pre { background: #2c3e50; color: #fff; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    .tutorial-details a { color: #007bff; text-decoration: none; }
+    .tutorial-details a:hover { text-decoration: underline; }
     .btn-accent { background: #007bff; color: #fff; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; margin-top: 10px; }
+    .ocr-spinner { width:18px; height:18px; border:3px solid rgba(0,0,0,0.12); border-top-color: #007bff; border-radius:50%; display:none; animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -107,8 +122,27 @@
           <h2 style="margin:0">الاستعلامات!!!</h2>
         </div>
 
-        <div style="margin-bottom:20px;">
-          <input type="text" id="searchInput" placeholder="🔍 ابحث عن المشكلة..." style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px;background:#fff;">
+        <div style="margin-bottom:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <div style="position:relative; flex:1;">
+            <input type="text" id="searchInput" placeholder="🔍 ابحث عن المشكلة..." style="width:100%; padding:12px 44px 12px 12px; border:2px solid #ddd; border-radius:8px; font-size:16px; background:#fff; box-sizing:border-box;">
+            <button id="imgSearchButtonTutorials" aria-label="التقاط/إرفاق صورة" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; padding:0;">
+              <!-- replace svg with external image file; place the attached file at img/camera-icon.png -->
+              <img id="cameraIconTutorials" src="photocameraoutline_80020.png" alt="camera" style="width:18px;height:18px;display:block;">
+            </button>
+            <input type="file" id="imgSearchInputTutorials" accept="image/*" style="display:none;">
+            <div id="ocrSpinnerTutorials" class="ocr-spinner" title="جارٍ المعالجة..." style="position:absolute; left:46px; top:50%; transform:translateY(-50%); display:none;"></div>
+            <button id="clearTextTutorials" aria-label="مسح النص" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; cursor:pointer; font-size:18px; line-height:1; display:none;">×</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;">لغة OCR:
+            <select id="ocrLangSelectTutorials" style="padding:6px;border-radius:6px;border:1px solid #ddd;background:#fff;display:none;">
+              <option value="ara">العربية (Arabic)</option>
+              <option value="eng">English</option>
+              <option value="ara+eng" selected>Arabic + English</option>
+              <option value="spa+por+fra">Spanish/Portuguese/French</option>
+              <option value="all">All common languages (may be slow)</option>
+            </select>
+          </label>
+          <button id="imgSearchClearTutorials" style="display:none;padding:8px;border-radius:8px;border:1px solid #ddd;background:#fff;">مسح</button>
         </div>
 
         <div id="tutorialsList"></div>
@@ -146,13 +180,16 @@
       
       const details = document.createElement('div'); details.className = 'tutorial-details';
       
+      // Create a wrapper for image and content in side-by-side layout
+      const contentWrapper = document.createElement('div');
+      
       if(data.thumb){
         const img = document.createElement('img'); img.src = data.thumb; img.alt = data.title || '';
         details.appendChild(img);
       }
       
       const content = document.createElement('div');
-      content.innerHTML = md.render(data.content || '');
+      content.innerHTML = data.content || '';
       details.appendChild(content);
 
       header.addEventListener('click', () => { wrapper.classList.toggle('expanded'); });
@@ -195,6 +232,147 @@
         allTutorials.push({ key: k, data: val[k], element: el });
       });
       tutorialsList.appendChild(fragment);
+      // compute aHash for tutorial thumbnails (8x8 aHash)
+      function toGrayscaleAndResize(img, size) {
+        size = size || 8;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+        try {
+          ctx.drawImage(img, 0, 0, size, size);
+          const d = ctx.getImageData(0, 0, size, size).data;
+          const pixels = [];
+          for (let i = 0; i < d.length; i += 4) {
+            const r = d[i], g = d[i+1], b = d[i+2];
+            pixels.push(Math.round((r + g + b) / 3));
+          }
+          return pixels;
+        } catch (err) { return null; }
+      }
+
+      function computeAHashFromImageElement(imgEl) {
+        const pixels = toGrayscaleAndResize(imgEl, 8);
+        if (!pixels) return null;
+        const avg = pixels.reduce((a,b)=>a+b,0)/pixels.length;
+        return pixels.map(v=> v>avg ? '1' : '0').join('');
+      }
+
+      function hamming(a,b){ if(!a||!b) return 999; let cnt=0; for(let i=0;i<Math.min(a.length,b.length);i++) if(a[i]!==b[i]) cnt++; return cnt; }
+
+      const tutorialThumbs = Array.from(document.querySelectorAll('.tutorial-details img'));
+      tutorialThumbs.forEach(img => {
+        if(img.complete && img.naturalWidth){ const h = computeAHashFromImageElement(img); if(h) img.dataset.ahash = h; }
+        else img.addEventListener('load', ()=>{ const h = computeAHashFromImageElement(img); if(h) img.dataset.ahash = h; });
+      });
+
+      // image-search handlers for tutorials
+      const imgSearchInputTutorials = document.getElementById('imgSearchInputTutorials');
+      const imgSearchClearTutorials = document.getElementById('imgSearchClearTutorials');
+      const imgSearchStatusTutorials = document.getElementById('imgSearchStatusTutorials');
+      const ocrSpinnerTutorials = document.getElementById('ocrSpinnerTutorials');
+      const imgSearchButtonTutorials = document.getElementById('imgSearchButtonTutorials');
+      const clearTextTutorials = document.getElementById('clearTextTutorials');
+
+      if (imgSearchInputTutorials) {
+        imgSearchInputTutorials.addEventListener('change', (ev)=>{
+          const file = ev.target.files && ev.target.files[0]; if(!file) return;
+          if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'inline-block';
+          const url = URL.createObjectURL(file);
+          const uploaded = new Image(); uploaded.crossOrigin = 'Anonymous';
+
+          uploaded.onload = ()=>{
+            // Attempt OCR first (Arabic preferred), fallback to image-hash comparison
+            if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'inline-block';
+            if (window.Tesseract && typeof Tesseract.recognize === 'function') {
+              // determine language string from selector
+              const langSelect = document.getElementById('ocrLangSelectTutorials');
+              let langStr = 'ara';
+              if (langSelect) {
+                const v = langSelect.value || 'ara';
+                if (v === 'all') {
+                  // a balanced set of common languages; loading may be slow
+                  langStr = 'eng+ara+spa+fra+deu+ita+por+rus+chi_sim+chi_tra+jpn+kor+hin+tur+vie';
+                } else {
+                  langStr = v;
+                }
+              }
+
+              Tesseract.recognize(file, langStr)
+                .then(res => {
+                  const text = res && res.data && res.data.text ? res.data.text.trim() : '';
+                  if (text && text.length > 2) {
+                    searchInput.value = text;
+                    filterTutorials();
+                    if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'none';
+                    URL.revokeObjectURL(url);
+                    return;
+                  }
+                  // no useful text -> fallback to hash matching
+                  if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'inline-block';
+                  performHashMatch(uploaded, url);
+                })
+                .catch(err => {
+                  if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'inline-block';
+                  performHashMatch(uploaded, url);
+                });
+            } else {
+              // Tesseract not available: do hash matching
+              if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'inline-block';
+              performHashMatch(uploaded, url);
+            }
+          };
+
+          uploaded.onerror = ()=>{ URL.revokeObjectURL(url); imgSearchStatusTutorials.innerText='خطأ في تحميل الصورة'; };
+          uploaded.src = url;
+
+          function performHashMatch(uploadedImg, objUrl) {
+            const pixels = toGrayscaleAndResize(uploadedImg,8);
+            URL.revokeObjectURL(objUrl);
+            if(!pixels){ if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'none'; return; }
+            const avg = pixels.reduce((a,b)=>a+b,0)/pixels.length;
+            const h = pixels.map(v=> v>avg ? '1' : '0').join('');
+
+            const thumbs = Array.from(document.querySelectorAll('.tutorial-details img'));
+            const results = thumbs.map(t=> ({ imgEl: t, dist: hamming(h, t.dataset.ahash || null) })).sort((a,b)=>a.dist-b.dist);
+
+            const threshold = 12;
+            const matches = results.filter(r => typeof r.dist === 'number' && r.dist <= threshold);
+
+            const items = Array.from(document.querySelectorAll('.faq-item'));
+            items.forEach(it => it.style.display = 'none');
+
+            if(matches.length === 0){
+              const top = results.slice(0,6).map(r=> r.imgEl.closest('.faq-item')).filter(Boolean);
+              top.forEach(c => c.style.display = '');
+            } else {
+              matches.forEach(r=>{ const c = r.imgEl.closest('.faq-item'); if(c) c.style.display = ''; });
+            }
+            if (ocrSpinnerTutorials) ocrSpinnerTutorials.style.display = 'none';
+          }
+        });
+      }
+
+      // camera button opens the hidden file input
+      if (imgSearchButtonTutorials && imgSearchInputTutorials) {
+        imgSearchButtonTutorials.addEventListener('click', (e) => { e.preventDefault(); imgSearchInputTutorials.click(); });
+      }
+
+      // clear (×) button for search input
+      if (clearTextTutorials) {
+        clearTextTutorials.addEventListener('click', (e) => {
+          e.preventDefault(); if (searchInput) { searchInput.value = ''; filterTutorials(); clearTextTutorials.style.display = 'none'; }
+          if (imgSearchInputTutorials) imgSearchInputTutorials.value = '';
+        });
+      }
+
+      // show/hide clear button depending on text
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          if (clearTextTutorials) clearTextTutorials.style.display = searchInput.value.trim() ? 'inline-block' : 'none';
+        });
+      }
+
+      if (imgSearchClearTutorials) imgSearchClearTutorials.addEventListener('click', ()=>{ document.querySelectorAll('.faq-item').forEach(c=> c.style.display=''); if(imgSearchInputTutorials) imgSearchInputTutorials.value=''; if(imgSearchStatusTutorials) imgSearchStatusTutorials.innerText=''; });
     }).catch(err => console.error('خطأ في تحميل الدروس:', err));
 
     // تحميل لوجو من DB إن وُجد
