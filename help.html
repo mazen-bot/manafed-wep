@@ -16,33 +16,29 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
-    body { background: #fffcff; color: #333; min-height: 100vh; display: flex; flex-direction: column; }
-    
-    /* Header styling - preserve original design */
-    header { 
+    :root { --max-content-width: 900px; }
+    body { background: #fffcff; color: #333; min-height: 100vh; display: flex; flex-direction: column; font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+
+    /* Header styling */
+    header {
       background: rgb(77, 14, 99);
-      padding: 8px 20px;
+      padding: 10px 20px;
       box-shadow: 0 2px 18px rgba(0,0,0,0.6);
       margin-bottom: 20px;
     }
-    .header-inner { 
+    .header-inner {
       display: flex;
       align-items: center;
       gap: 14px;
       max-width: 1200px;
       margin: 0 auto;
+      flex-wrap: nowrap;
     }
-    .logo { 
-      height: 50px;
-      width: auto;
-    }
-    .header-title { 
-      margin: 0;
-      font-size: 1.5rem;
-      color: var(--primary);
-    }
-    
-    .help-layout { max-width: 900px; margin: 40px auto; padding: 0 20px; flex: 1; }
+    .logo { height: 50px; width: auto; }
+    .header-title { margin: 0; font-size: clamp(1.1rem, 2.5vw, 1.6rem); color: var(--primary); }
+
+    /* Layout base */
+    .help-layout { max-width: var(--max-content-width); margin: 40px auto; padding: 0 20px; flex: 1; box-sizing: border-box; }
     .main { width: 100%; }
     .side { display: none; }
     .tabs { display: none; }
@@ -52,20 +48,24 @@
     #tutorials-section { padding: 0; }
     #tutorials-section > div:first-child { display: none; }
     #add-form { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-    form input, form textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #000; margin-bottom: 10px; }
+    form input, form textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #000; margin-bottom: 10px; font-size: 1rem; box-sizing:border-box; }
     .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; background: #007bff; color: #fff; }
     #tutorialsList { display: flex; flex-direction: column; gap: 0; }
     .faq-item { border-bottom: 1px solid #e5e5e5; padding: 18px 0; cursor: pointer; }
     .faq-item:last-child { border-bottom: none; }
     .faq-header { display: flex; justify-content: space-between; align-items: center; }
-    .faq-question { margin: 0; font-size: 16px; font-weight: 500; color: #333; }
+    .faq-question { margin: 0; font-size: clamp(1rem, 2.2vw, 1.1rem); font-weight: 600; color: #333; }
     .faq-icon { font-size: 18px; color: #666; transition: transform 0.3s ease; }
     .faq-item.expanded .faq-icon { transform: rotate(180deg); }
+
+    /* Collapsible details */
     .tutorial-details { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; padding: 0; }
     .faq-item.expanded .tutorial-details { max-height: 2000px; padding-top: 15px; }
+
+    /* Default details layout: image at left (row-reverse because RTL) and text to the right */
     .tutorial-details { display: flex; gap: 20px; align-items: flex-start; flex-direction: row-reverse; }
-    .tutorial-details p { color: #666; line-height: 1.6; margin: 10px 0; }
-    .tutorial-details img { min-width: 200px; max-width: 200px; height: auto; border-radius: 8px; flex-shrink: 0; }
+    .tutorial-details p { color: #666; line-height: 1.6; margin: 10px 0; font-size: clamp(0.95rem, 1.6vw, 1.05rem); }
+    .tutorial-details img { width: 240px; max-width: 35%; min-width: 140px; height: auto; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
     .tutorial-details > div:last-child { flex: 1; }
     .tutorial-details h1, .tutorial-details h2, .tutorial-details h3 { color: #2c3e50; margin-top: 15px; margin-bottom: 10px; }
     .tutorial-details ul, .tutorial-details ol { padding-right: 20px; color: #666; line-height: 1.8; }
@@ -80,6 +80,29 @@
     .btn-accent { background: #007bff; color: #fff; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; margin-top: 10px; }
     .ocr-spinner { width:18px; height:18px; border:3px solid rgba(0,0,0,0.12); border-top-color: #007bff; border-radius:50%; display:none; animation:spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .help-layout { padding: 0 16px; margin: 28px auto; }
+      .tutorial-details { gap: 14px; }
+      .tutorial-details img { width: 220px; max-width: 40%; min-width: 120px; }
+    }
+
+    @media (max-width: 600px) {
+      .header-inner { flex-wrap: wrap; gap: 10px; }
+      .logo { height: 42px; }
+      .header-title { font-size: clamp(1rem, 6vw, 1.3rem); }
+      .tutorial-details { flex-direction: column-reverse; align-items: stretch; }
+      .tutorial-details img { width: 100%; max-width: 100%; min-width: 0; height: auto; }
+      .faq-question { font-size: clamp(0.95rem, 4.5vw, 1.05rem); }
+      form input, form textarea { font-size: 1rem; padding: 10px; }
+      .faq-item { padding: 12px 0; }
+      header { padding: 8px 12px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .faq-item, .tutorial-details, .faq-icon { transition: none !important; }
+    }
   </style>
 </head>
 <body>
